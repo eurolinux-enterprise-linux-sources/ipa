@@ -1,7 +1,7 @@
-From 2928c15abd543aac3df127969d979d468439be4d Mon Sep 17 00:00:00 2001
+From f4e0a89d2fa76b0a24dec607e3418bdd100ae64a Mon Sep 17 00:00:00 2001
 From: Alexander Bokovoy <abokovoy@redhat.com>
 Date: Mon, 12 Jan 2015 13:36:36 +0200
-Subject: [PATCH 2/2] Support Samba PASSDB 0.2.0 aka interface version 24
+Subject: [PATCH] Support Samba PASSDB 0.2.0 aka interface version 24
 
 1. Samba project renamed libpdb to libsamba-passdb
    https://bugzilla.samba.org/show_bug.cgi?id=10355
@@ -22,7 +22,7 @@ Reviewed-By: Sumit Bose <sbose@redhat.com>
  3 files changed, 40 insertions(+), 1 deletion(-)
 
 diff --git a/daemons/configure.ac b/daemons/configure.ac
-index ebf625e..1cf3a09 100644
+index ebf625ebffd8a92e0a3b050955b9376e002ed6c9..1cf3a0937e0de2fea6ac6a0a031425e3613595ec 100644
 --- a/daemons/configure.ac
 +++ b/daemons/configure.ac
 @@ -252,6 +252,23 @@ AC_CHECK_LIB([wbclient],
@@ -50,7 +50,7 @@ index ebf625e..1cf3a09 100644
  dnl - Check for check unit test framework http://check.sourceforge.net/
  dnl ---------------------------------------------------------------------------
 diff --git a/daemons/ipa-sam/Makefile.am b/daemons/ipa-sam/Makefile.am
-index 53c8f47..ecf16d8 100644
+index 53c8f47bbfe927caf785a5529fb5d6e2dcbc7525..ecf16d86078f5d2006405f4deb8a984a3adbf290 100644
 --- a/daemons/ipa-sam/Makefile.am
 +++ b/daemons/ipa-sam/Makefile.am
 @@ -1,7 +1,8 @@
@@ -64,10 +64,10 @@ index 53c8f47..ecf16d8 100644
  			$(NULL)
  
 diff --git a/daemons/ipa-sam/ipa_sam.c b/daemons/ipa-sam/ipa_sam.c
-index 3c4c97c..17988b7 100644
+index 3fe5a73813543754d50c18f0e9c8b6ea866ebf1a..a095cf66fe24619b1eaef8ec1be999734b2418b0 100644
 --- a/daemons/ipa-sam/ipa_sam.c
 +++ b/daemons/ipa-sam/ipa_sam.c
-@@ -862,6 +862,22 @@ done:
+@@ -942,6 +942,22 @@ done:
  	return ret;
  }
  
@@ -90,7 +90,7 @@ index 3c4c97c..17988b7 100644
  
  static char *get_ldap_filter(TALLOC_CTX *mem_ctx, const char *username)
  {
-@@ -4122,8 +4138,13 @@ static NTSTATUS pdb_init_ipasam(struct pdb_methods **pdb_method,
+@@ -4265,8 +4281,13 @@ static NTSTATUS pdb_init_ipasam(struct pdb_methods **pdb_method,
  	(*pdb_method)->search_aliases = ldapsam_search_aliases;
  	(*pdb_method)->lookup_rids = ldapsam_lookup_rids;
  	(*pdb_method)->sid_to_id = ldapsam_sid_to_id;
@@ -105,5 +105,5 @@ index 3c4c97c..17988b7 100644
  	(*pdb_method)->capabilities = pdb_ipasam_capabilities;
  	(*pdb_method)->get_domain_info = pdb_ipasam_get_domain_info;
 -- 
-2.5.5
+2.9.3
 

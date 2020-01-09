@@ -20,7 +20,7 @@
 
 Name:           ipa
 Version:        3.0.0
-Release:        50%{?date}%{?dist}.1
+Release:        50%{?date}%{?dist}.2
 Summary:        The Identity, Policy and Audit system
 
 Group:          System Environment/Base
@@ -179,6 +179,7 @@ Patch0146:      0146-ipa-client-automount-Leverage-IPAChangeConf-to-confi.patch
 Patch0147:      0147-Skip-time-sync-during-client-install-when-using-no-n.patch
 Patch0148:      0148-add-DS-index-for-userCertificate-attribute.patch
 Patch0149:      0149-webui-use-manual-Firefox-configuration-for-Firefox-4.patch
+Patch0150:      0150-cert-revoke-fix-permission-check-bypass.patch
 
 Patch1001:      1001-hide-pkinit.patch
 Patch1002:      1002-remove-pkinit.patch
@@ -885,6 +886,11 @@ fi
 %ghost %attr(0644,root,apache) %config(noreplace) %{_sysconfdir}/ipa/ca.crt
 
 %changelog
+* Mon Aug 22 2016 Jan Cholasta <jcholast@redhat.com> - 3.0.0-50.el6.2
+- Resolves: #1351593 CVE-2016-5404 ipa: Insufficient privileges check in
+  certificate revocation
+  - cert-revoke: fix permission check bypass (CVE-2016-5404)
+
 * Tue Apr 12 2016 Alexander Bokovoy <abokovoy@redhat.com> - 3.0.0-50.el6.1
 - Update IPA code to support Samba 4.2
 - Related: #1322689
