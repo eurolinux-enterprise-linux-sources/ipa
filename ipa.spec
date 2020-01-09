@@ -20,7 +20,7 @@
 
 Name:           ipa
 Version:        3.0.0
-Release:        50%{?date}%{?dist}.3
+Release:        51%{?date}%{?dist}
 Summary:        The Identity, Policy and Audit system
 
 Group:          System Environment/Base
@@ -266,7 +266,7 @@ Requires: %{name}-python = %{version}-%{release}
 Requires: %{name}-client = %{version}-%{release}
 Requires: %{name}-admintools = %{version}-%{release}
 Requires: %{name}-server-selinux = %{version}-%{release}
-Requires: 389-ds-base >= 1.2.11.15-51
+Requires: 389-ds-base >= 1.2.11.15-83
 Requires: openldap-clients
 Requires: nss
 Requires: nss-tools
@@ -338,6 +338,7 @@ Requires: samba4-python
 Requires: samba4 >= 4.0.0-31
 Requires: libsss_idmap
 Requires: samba4-winbind
+Requires: python-sss
 # We use alternatives to divert winbind_krb5_locator.so plugin to libkrb5
 # on the installes where server-trust-ad subpackage is installed because
 # IPA AD trusts cannot be used at the same time with the locator plugin
@@ -424,6 +425,7 @@ Requires: python-nss >= 0.16
 Requires: python-lxml
 Requires: python-netaddr
 Requires: libipa_hbac-python
+Requires: python-sss-murmur
 
 %description python
 IPA is an integrated solution to provide centrally managed Identity (machine,
@@ -889,8 +891,16 @@ fi
 %ghost %attr(0644,root,apache) %config(noreplace) %{_sysconfdir}/ipa/ca.crt
 
 %changelog
+* Mon Nov  7 2016 Jan Cholasta <jcholast@redhat.com> - 3.0.0-51.el6
+- Resolves: #1321138 Missing dependency package "python-sss-murmur" in
+  ipa-server-3.0.0-50.el6.x86_64
+  - SPEC: Require python2 version of sssd bindings
+- Resolves: #1367026 Document and test procedure for running IdM Server in TLS
+  1.2+ environment
+  - Require 389-ds-base with TLS 1.0 disable switch
+
 * Tue Aug 30 2016 Jan Cholasta <jcholast@redhat.com> - 3.0.0-50.el6.3
-- Resolves: #1369470 IPA Replica-Install from RHEL6 to RHEL7 Fails
+- Resolves: #1322059 IPA Replica-Install from RHEL6 to RHEL7 Fails
   - Modififed NSSConnection not to shutdown existing database.
   - Do not erroneously reinit NSS in Dogtag interface
   - Make sure replication works after DM password is changed
