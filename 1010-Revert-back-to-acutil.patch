@@ -1,4 +1,4 @@
-From 7e3a696483b0bf716687b7be10de72a99e62c3c2 Mon Sep 17 00:00:00 2001
+From 0369166080feb598fe71ff733c1812f41b5c8fe1 Mon Sep 17 00:00:00 2001
 From: Martin Kosek <mkosek@redhat.com>
 Date: Tue, 28 Aug 2012 12:25:33 +0200
 Subject: [PATCH] Revert back to acutil
@@ -27,7 +27,7 @@ provide better debugging output of returned DNS records.
  create mode 100644 ipapython/dnsclient.py
 
 diff --git a/freeipa.spec.in b/freeipa.spec.in
-index 11e7288fd39b264263c443bd54dc672826c19264..711b522237cc9f8e2e50ba784ba94c17032d36af 100644
+index 6266f06e4609edec86ef1615323b988cb992957c..427b59917633cc38cdb55f869f84fdbc3d9e6233 100644
 --- a/freeipa.spec.in
 +++ b/freeipa.spec.in
 @@ -87,10 +87,10 @@ BuildRequires:  python-memcached
@@ -199,7 +199,7 @@ index 07e638179614649f9b07c1401265e1a66321576c..460b408e56f39ff1c29bac2c75450395
          return api.Command['dns_resolve'](name)
      except errors.NotFound:
 diff --git a/ipalib/rpc.py b/ipalib/rpc.py
-index c9f9e7aa28c31f5a23f596036f526e6195150835..ceb19080aeb2b5588688a4f92b0c2917a2e569ce 100644
+index 94593ce51f0f735c280286a0dcf947f62e55b9b8..67696254eb5905bde57eedb81e5833bcbcaf4010 100644
 --- a/ipalib/rpc.py
 +++ b/ipalib/rpc.py
 @@ -41,8 +41,6 @@ import datetime
@@ -219,7 +219,7 @@ index c9f9e7aa28c31f5a23f596036f526e6195150835..ceb19080aeb2b5588688a4f92b0c2917
  
  import httplib
  import socket
-@@ -477,14 +476,11 @@ class xmlclient(Connectible):
+@@ -481,14 +480,11 @@ class xmlclient(Connectible):
          servers = []
          name = '_ldap._tcp.%s.' % self.env.domain
  
@@ -906,5 +906,5 @@ index 754d5fc98f3122cc82064c039236f5916eabf469..62fcb90dc20d9a90ddaf8f77487eadae
      # list of verified addresses to prevent multiple searches for the same address
      verified = set()
 -- 
-2.6.4
+2.7.4
 

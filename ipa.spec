@@ -20,7 +20,7 @@
 
 Name:           ipa
 Version:        3.0.0
-Release:        50%{?date}%{?dist}.2
+Release:        50%{?date}%{?dist}.3
 Summary:        The Identity, Policy and Audit system
 
 Group:          System Environment/Base
@@ -180,6 +180,9 @@ Patch0147:      0147-Skip-time-sync-during-client-install-when-using-no-n.patch
 Patch0148:      0148-add-DS-index-for-userCertificate-attribute.patch
 Patch0149:      0149-webui-use-manual-Firefox-configuration-for-Firefox-4.patch
 Patch0150:      0150-cert-revoke-fix-permission-check-bypass.patch
+Patch0151:      0151-Modififed-NSSConnection-not-to-shutdown-existing-dat.patch
+Patch0152:      0152-Do-not-erroneously-reinit-NSS-in-Dogtag-interface.patch
+Patch0153:      0153-Make-sure-replication-works-after-DM-password-is-cha.patch
 
 Patch1001:      1001-hide-pkinit.patch
 Patch1002:      1002-remove-pkinit.patch
@@ -206,7 +209,7 @@ Patch1030:      1030-ipaserver-dcerpc-Ensure-LSA-pipe-has-session-key-bef.patch
 Patch1031:      1031-Support-Samba-PASSDB-0.2.0-aka-interface-version-24.patch
 
 %if ! %{ONLY_CLIENT}
-BuildRequires:  389-ds-base-devel >= 1.2.11.15
+BuildRequires:  389-ds-base-devel >= 1.2.11.15-22
 BuildRequires:  svrcore-devel
 BuildRequires:  /usr/share/selinux/devel/Makefile
 BuildRequires:  policycoreutils >= %{POLICYCOREUTILSVER}
@@ -886,6 +889,12 @@ fi
 %ghost %attr(0644,root,apache) %config(noreplace) %{_sysconfdir}/ipa/ca.crt
 
 %changelog
+* Tue Aug 30 2016 Jan Cholasta <jcholast@redhat.com> - 3.0.0-50.el6.3
+- Resolves: #1369470 IPA Replica-Install from RHEL6 to RHEL7 Fails
+  - Modififed NSSConnection not to shutdown existing database.
+  - Do not erroneously reinit NSS in Dogtag interface
+  - Make sure replication works after DM password is changed
+
 * Mon Aug 22 2016 Jan Cholasta <jcholast@redhat.com> - 3.0.0-50.el6.2
 - Resolves: #1351593 CVE-2016-5404 ipa: Insufficient privileges check in
   certificate revocation
