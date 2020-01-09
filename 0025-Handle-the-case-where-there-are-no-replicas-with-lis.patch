@@ -1,4 +1,4 @@
-From 12e1ad747effc11e71741377b29e147d4040c11e Mon Sep 17 00:00:00 2001
+From acd46c26cca3a937dfe7098485ded1208182b1ce Mon Sep 17 00:00:00 2001
 From: Rob Crittenden <rcritten@redhat.com>
 Date: Tue, 6 Nov 2012 17:31:11 -0500
 Subject: [PATCH] Handle the case where there are no replicas with list-ruv
@@ -12,10 +12,10 @@ https://fedorahosted.org/freeipa/ticket/3229
  1 file changed, 11 insertions(+), 10 deletions(-)
 
 diff --git a/install/tools/ipa-replica-manage b/install/tools/ipa-replica-manage
-index 449138bdf322ae509b2586967b6650d4e780c484..2422891082ac5be1521426e40772bc23e8d1dc3a 100755
+index 270095b8849c092ce60fa6cedccda5c0659bb5c0..d7e317c5a09d24c63b1a890c98c0a0c621050ae2 100755
 --- a/install/tools/ipa-replica-manage
 +++ b/install/tools/ipa-replica-manage
-@@ -334,16 +334,17 @@ def get_ruv(realm, host, dirman_passwd):
+@@ -324,16 +324,17 @@ def get_ruv(realm, host, dirman_passwd):
          sys.exit(0)
  
      servers = []
@@ -44,5 +44,5 @@ index 449138bdf322ae509b2586967b6650d4e780c484..2422891082ac5be1521426e40772bc23
      return servers
  
 -- 
-1.7.11.7
+2.4.3
 

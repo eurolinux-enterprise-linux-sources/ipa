@@ -1,12 +1,13 @@
-From b37a775b5ccf754d06a449794e6c240765e3937f Mon Sep 17 00:00:00 2001
+From 882203f5e7f8494de11b2bf8b91de4e35fabb0ef Mon Sep 17 00:00:00 2001
 From: Rob Crittenden <rcritten@redhat.com>
 Date: Thu, 30 Aug 2012 10:59:08 -0400
-Subject: [PATCH 7/8] Add an update to remove existing entitlement roles/permissions/privileges
+Subject: [PATCH] Add an update to remove existing entitlement
+ roles/permissions/privileges
 
 ---
- install/updates/50-remove-entitlements.update |   25 +++++++++++++++++++++++++
- install/updates/Makefile.am                   |    1 +
- 2 files changed, 26 insertions(+), 0 deletions(-)
+ install/updates/50-remove-entitlements.update | 25 +++++++++++++++++++++++++
+ install/updates/Makefile.am                   |  1 +
+ 2 files changed, 26 insertions(+)
  create mode 100644 install/updates/50-remove-entitlements.update
 
 diff --git a/install/updates/50-remove-entitlements.update b/install/updates/50-remove-entitlements.update
@@ -41,10 +42,10 @@ index 0000000000000000000000000000000000000000..f6cda4085f930e8e9626c3ea98ab609e
 +dn: cn=Write Entitlements,cn=permissions,cn=pbac,$SUFFIX
 +deleteentry: dn: cn=Write Entitlements,cn=permissions,cn=pbac,$SUFFIX
 diff --git a/install/updates/Makefile.am b/install/updates/Makefile.am
-index bc7945d7a5cd77469f7fe7175ebd9da66b9119d1..bb11b5e3a2142a86a61eb99ed0d6ed0ac034ccd7 100644
+index e9dce7006328d427b975ed0d24a5d0a6968af33c..23da6d52a1718d00afd5467e0e0d7ed06066e436 100644
 --- a/install/updates/Makefile.am
 +++ b/install/updates/Makefile.am
-@@ -33,6 +33,7 @@ app_DATA =				\
+@@ -36,6 +36,7 @@ app_DATA =				\
  	50-hbacservice.update		\
  	50-nis.update			\
  	50-ipaconfig.update		\
@@ -53,5 +54,5 @@ index bc7945d7a5cd77469f7fe7175ebd9da66b9119d1..bb11b5e3a2142a86a61eb99ed0d6ed0a
  	60-trusts.update		\
  	61-trusts-s4u2proxy.update	\
 -- 
-1.7.1
+2.6.4
 

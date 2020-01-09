@@ -1,7 +1,7 @@
-From 4c6ef6f72e78abd6d1983b5157af1c42c15fde66 Mon Sep 17 00:00:00 2001
+From a93301302b789fa3f909821d6db06aefb9034ff4 Mon Sep 17 00:00:00 2001
 From: Tomas Babej <tbabej@redhat.com>
 Date: Fri, 13 Jun 2014 10:49:52 +0200
-Subject: [PATCH 104/116] cainstance: Read CS.cfg for preop.pin in a loop
+Subject: [PATCH] cainstance: Read CS.cfg for preop.pin in a loop
 
 As due to possible race conditions, the preop.pin might not be
 written in the CS.cfg at the time installer tries to read it.
@@ -20,7 +20,7 @@ diff --git a/ipaserver/install/cainstance.py b/ipaserver/install/cainstance.py
 index aea56e835230f6fdd4da8341d891ee936170b50a..fa5d4e8cc4af77663ffd59832ed387be03c9e6ed 100644
 --- a/ipaserver/install/cainstance.py
 +++ b/ipaserver/install/cainstance.py
-@@ -38,7 +38,7 @@
+@@ -38,7 +38,7 @@ import socket
  from ipapython import dogtag
  from ipapython.certdb import get_ca_nickname
  from ipapython import certmonger
@@ -73,5 +73,5 @@ index aea56e835230f6fdd4da8341d891ee936170b50a..fa5d4e8cc4af77663ffd59832ed387be
      if preop_pin is None:
          raise RuntimeError("Unable to find preop.pin in %s. Is your CA already configured?" % filename)
 -- 
-1.9.3
+2.4.3
 

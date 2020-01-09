@@ -1,7 +1,7 @@
-From 38f28cf56850b2a1278e5d400c5a70b259918fc0 Mon Sep 17 00:00:00 2001
+From 20595e868c03f2cbe499e41c35dff9e15ebf4a33 Mon Sep 17 00:00:00 2001
 From: Rob Crittenden <rcritten@redhat.com>
 Date: Fri, 2 Aug 2013 10:51:55 +0200
-Subject: [PATCH 84/98] Apply LDAP update files in blocks of 10, as originally
+Subject: [PATCH] Apply LDAP update files in blocks of 10, as originally
  designed.
 
 In order to have control over the order that updates are applied
@@ -59,7 +59,7 @@ diff --git a/ipaserver/install/dsinstance.py b/ipaserver/install/dsinstance.py
 index d389b1c40c26b2cc9bf59efb69935a0c4a63ee42..55a28e26f840eea50a5f451820198f92072c5376 100644
 --- a/ipaserver/install/dsinstance.py
 +++ b/ipaserver/install/dsinstance.py
-@@ -473,7 +473,7 @@ def init_memberof(self):
+@@ -473,7 +473,7 @@ class DsInstance(service.Service):
      def apply_updates(self):
          ld = ldapupdate.LDAPUpdate(dm_password=self.dm_password, sub_dict=self.sub_dict, plugins=True)
          files = ld.get_all_files(ldapupdate.UPDATES_DIR)
@@ -72,7 +72,7 @@ diff --git a/ipaserver/install/ipa_ldap_updater.py b/ipaserver/install/ipa_ldap_
 index d9f68092752debcd4e5a3a70878aceb7215aae30..2c5bad5696b069a40ddc25fa9bcdcf75fa959bbc 100644
 --- a/ipaserver/install/ipa_ldap_updater.py
 +++ b/ipaserver/install/ipa_ldap_updater.py
-@@ -189,7 +189,7 @@ def run(self):
+@@ -189,7 +189,7 @@ class LDAPUpdater_NonUpgrade(LDAPUpdater):
          if not self.files:
              self.files = ld.get_all_files(UPDATES_DIR)
  
@@ -85,7 +85,7 @@ diff --git a/ipaserver/install/ldapupdate.py b/ipaserver/install/ldapupdate.py
 index 1c23d7595fc096b6d5fe7c3e6e0007ee44cdb78a..abcb3812b8b2e69b73fbfcc7fa66b199ab210eb8 100644
 --- a/ipaserver/install/ldapupdate.py
 +++ b/ipaserver/install/ldapupdate.py
-@@ -46,6 +46,7 @@
+@@ -46,6 +46,7 @@ import pwd
  import fnmatch
  import csv
  import inspect
@@ -93,7 +93,7 @@ index 1c23d7595fc096b6d5fe7c3e6e0007ee44cdb78a..abcb3812b8b2e69b73fbfcc7fa66b199
  from ipaserver.install.plugins import PRE_UPDATE, POST_UPDATE
  from ipaserver.install.plugins import FIRST, MIDDLE, LAST
  
-@@ -899,21 +900,46 @@ def update_sort_key(dn_update):
+@@ -899,21 +900,46 @@ class LDAPUpdate:
          for dn, update in sorted_updates:
              self._delete_record(update)
  
@@ -145,7 +145,7 @@ diff --git a/ipaserver/install/upgradeinstance.py b/ipaserver/install/upgradeins
 index aa4440c71ea04ce1044cb0cd1379039836b1c2ad..895f29b3dede5542c7316f64978e8b1434b5236c 100644
 --- a/ipaserver/install/upgradeinstance.py
 +++ b/ipaserver/install/upgradeinstance.py
-@@ -115,7 +115,7 @@ def __upgrade(self):
+@@ -115,7 +115,7 @@ class IPAUpgrade(service.Service):
              ld = ldapupdate.LDAPUpdate(dm_password='', ldapi=True, live_run=self.live_run, plugins=True)
              if len(self.files) == 0:
                  self.files = ld.get_all_files(ldapupdate.UPDATES_DIR)
@@ -155,5 +155,5 @@ index aa4440c71ea04ce1044cb0cd1379039836b1c2ad..895f29b3dede5542c7316f64978e8b14
              root_logger.error('Bad syntax in upgrade %s' % str(e))
              self.modified = False
 -- 
-1.8.3.1
+2.4.3
 

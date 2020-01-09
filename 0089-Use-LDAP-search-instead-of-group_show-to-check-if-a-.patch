@@ -1,8 +1,8 @@
-From 7ed3fc96a3ca716edf81b98b36890d50d04f9931 Mon Sep 17 00:00:00 2001
+From 4d66e32e132998f90bb75a496ca47b8da37d9b96 Mon Sep 17 00:00:00 2001
 From: Jan Cholasta <jcholast@redhat.com>
 Date: Tue, 25 Jun 2013 12:58:37 +0000
-Subject: [PATCH 89/98] Use LDAP search instead of *group_show to check if a
- group exists.
+Subject: [PATCH] Use LDAP search instead of *group_show to check if a group
+ exists.
 
 https://fedorahosted.org/freeipa/ticket/3706
 ---
@@ -52,7 +52,7 @@ diff --git a/ipalib/plugins/baseldap.py b/ipalib/plugins/baseldap.py
 index a55a23244b65dd98b8bcd63b587471e436bf3743..2deb66ea7cc6139846cb1d8e73359440b0d47689 100644
 --- a/ipalib/plugins/baseldap.py
 +++ b/ipalib/plugins/baseldap.py
-@@ -525,6 +525,11 @@ def get_dn(self, *keys, **kwargs):
+@@ -525,6 +525,11 @@ class LDAPObject(Object):
          assert isinstance(parent_dn, DN)
          return parent_dn
  
@@ -68,7 +68,7 @@ diff --git a/ipalib/plugins/config.py b/ipalib/plugins/config.py
 index 5f916903b9ba98a935935dcf32e4b8c18816defa..03f2355a4227b73b38cd9add1993cceeb2701752 100644
 --- a/ipalib/plugins/config.py
 +++ b/ipalib/plugins/config.py
-@@ -213,7 +213,7 @@ def pre_callback(self, ldap, dn, entry_attrs, attrs_list, *keys, **options):
+@@ -213,7 +213,7 @@ class config_mod(LDAPUpdate):
          if 'ipadefaultprimarygroup' in entry_attrs:
              group=entry_attrs['ipadefaultprimarygroup']
              try:
@@ -81,7 +81,7 @@ diff --git a/ipalib/plugins/hostgroup.py b/ipalib/plugins/hostgroup.py
 index 7e6fe6d656fb9d105990bd0c389c2b317cab3d89..6fb326e23620213e837723b8fa3faa09cee61f04 100644
 --- a/ipalib/plugins/hostgroup.py
 +++ b/ipalib/plugins/hostgroup.py
-@@ -122,7 +122,7 @@ def pre_callback(self, ldap, dn, entry_attrs, attrs_list, *keys, **options):
+@@ -122,7 +122,7 @@ class hostgroup_add(LDAPCreate):
          assert isinstance(dn, DN)
          try:
              # check duplicity with hostgroups first to provide proper error
@@ -90,7 +90,7 @@ index 7e6fe6d656fb9d105990bd0c389c2b317cab3d89..6fb326e23620213e837723b8fa3faa09
              self.obj.handle_duplicate_entry(*keys)
          except errors.NotFound:
              pass
-@@ -130,7 +130,7 @@ def pre_callback(self, ldap, dn, entry_attrs, attrs_list, *keys, **options):
+@@ -130,7 +130,7 @@ class hostgroup_add(LDAPCreate):
          try:
              # when enabled, a managed netgroup is created for every hostgroup
              # make sure that the netgroup can be created
@@ -103,7 +103,7 @@ diff --git a/ipalib/plugins/netgroup.py b/ipalib/plugins/netgroup.py
 index 6321aa7337ebd20da3fa08260b73e0085b361d79..fdf56014a7c86d6e37ab985683109488a3270d54 100644
 --- a/ipalib/plugins/netgroup.py
 +++ b/ipalib/plugins/netgroup.py
-@@ -179,7 +179,7 @@ def pre_callback(self, ldap, dn, entry_attrs, attrs_list, *keys, **options):
+@@ -179,7 +179,7 @@ class netgroup_add(LDAPCreate):
              # when enabled, a managed netgroup is created for every hostgroup
              # make sure that we don't create a collision if the plugin is
              # (temporarily) disabled
@@ -116,7 +116,7 @@ diff --git a/ipalib/plugins/user.py b/ipalib/plugins/user.py
 index 5d667dc94d483c2775d4a1d793624fc081615047..1427def0d207d892b31a7ff3109757af5dd94106 100644
 --- a/ipalib/plugins/user.py
 +++ b/ipalib/plugins/user.py
-@@ -454,7 +454,7 @@ def pre_callback(self, ldap, dn, entry_attrs, attrs_list, *keys, **options):
+@@ -454,7 +454,7 @@ class user_add(LDAPCreate):
                  # The Managed Entries plugin will allow a user to be created
                  # even if a group has a duplicate name. This would leave a user
                  # without a private group. Check for both the group and the user.
@@ -126,5 +126,5 @@ index 5d667dc94d483c2775d4a1d793624fc081615047..1427def0d207d892b31a7ff3109757af
                      self.api.Command['user_show'](keys[-1])
                      self.obj.handle_duplicate_entry(*keys)
 -- 
-1.8.3.1
+2.4.3
 

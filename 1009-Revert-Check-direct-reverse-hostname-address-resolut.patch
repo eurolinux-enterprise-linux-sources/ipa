@@ -1,4 +1,4 @@
-From aa9d12253182fcb5eaaec112ab42bbac94ddb3d3 Mon Sep 17 00:00:00 2001
+From 80d181905930486b70d29e2eb96a544209de46c4 Mon Sep 17 00:00:00 2001
 From: Martin Kosek <mkosek@redhat.com>
 Date: Fri, 13 Jun 2014 13:34:47 +0200
 Subject: [PATCH] Revert "Check direct/reverse hostname/address resolution in
@@ -11,7 +11,7 @@ package required for this functionality is not present on RHEL 6.4.
  1 file changed, 27 insertions(+), 149 deletions(-)
 
 diff --git a/install/tools/ipa-replica-install b/install/tools/ipa-replica-install
-index 4fe387f3cb5cd00e45d93a9c8eef0e3d5a3706e4..cd5e7909f7e637e5a4315fcdc7a7851a6d5847a0 100755
+index 21f2ad1a3b8edcf6e27ee6be27aed017e906c447..bcd66903c0bface52d106e92957e2a497b25d006 100755
 --- a/install/tools/ipa-replica-install
 +++ b/install/tools/ipa-replica-install
 @@ -24,11 +24,6 @@ import socket
@@ -34,7 +34,7 @@ index 4fe387f3cb5cd00e45d93a9c8eef0e3d5a3706e4..cd5e7909f7e637e5a4315fcdc7a7851a
  
  def parse_options():
      usage = "%prog [options] REPLICA_FILE"
-@@ -222,7 +216,7 @@ def install_http(config, auto_redirect):
+@@ -220,7 +214,7 @@ def install_http(config, auto_redirect):
      return http
  
  def install_bind(config, options):
@@ -43,7 +43,7 @@ index 4fe387f3cb5cd00e45d93a9c8eef0e3d5a3706e4..cd5e7909f7e637e5a4315fcdc7a7851a
                                bind_pw=config.dirman_password)
      if options.forwarders:
          forwarders = options.forwarders
-@@ -252,32 +246,6 @@ def install_bind(config, options):
+@@ -250,32 +244,6 @@ def install_bind(config, options):
      bind.check_global_configuration()
      print ""
  
@@ -76,7 +76,7 @@ index 4fe387f3cb5cd00e45d93a9c8eef0e3d5a3706e4..cd5e7909f7e637e5a4315fcdc7a7851a
  def install_dns_records(config, options):
  
      if not bindinstance.dns_container_exists(config.master_host_name,
-@@ -287,23 +255,31 @@ def install_dns_records(config, options):
+@@ -285,23 +253,31 @@ def install_dns_records(config, options):
  
      # We have to force to connect to the remote master because we do this step
      # before our DS server is installed.
@@ -123,7 +123,7 @@ index 4fe387f3cb5cd00e45d93a9c8eef0e3d5a3706e4..cd5e7909f7e637e5a4315fcdc7a7851a
  
  def check_dirsrv():
      (ds_unsecure, ds_secure) = dsinstance.check_ports()
-@@ -321,86 +297,6 @@ def check_bind():
+@@ -319,86 +295,6 @@ def check_bind():
          print "Aborting installation"
          sys.exit(1)
  
@@ -210,7 +210,7 @@ index 4fe387f3cb5cd00e45d93a9c8eef0e3d5a3706e4..cd5e7909f7e637e5a4315fcdc7a7851a
  def main():
      ipaservices.check_selinux_status()
      safe_options, options, filename = parse_options()
-@@ -475,7 +371,6 @@ def main():
+@@ -473,7 +369,6 @@ def main():
      config.dir = dir
      config.setup_ca = options.setup_ca
  
@@ -218,7 +218,7 @@ index 4fe387f3cb5cd00e45d93a9c8eef0e3d5a3706e4..cd5e7909f7e637e5a4315fcdc7a7851a
  
      # check connection
      if not options.skip_conncheck:
-@@ -533,12 +428,12 @@ def main():
+@@ -531,12 +426,12 @@ def main():
      # Install CA cert so that we can do SSL connections with ldap
      install_ca_cert(config)
  
@@ -234,7 +234,7 @@ index 4fe387f3cb5cd00e45d93a9c8eef0e3d5a3706e4..cd5e7909f7e637e5a4315fcdc7a7851a
                       tls_cacertfile=CACERT)
          replman = ReplicationManager(config.realm_name, config.master_host_name,
                                       config.dirman_password)
-@@ -550,23 +445,6 @@ def main():
+@@ -548,23 +443,6 @@ def main():
              found = True
          except errors.NotFound:
              pass
@@ -259,5 +259,5 @@ index 4fe387f3cb5cd00e45d93a9c8eef0e3d5a3706e4..cd5e7909f7e637e5a4315fcdc7a7851a
              (agreement_cn, agreement_dn) = replman.agreement_dn(host)
              entry = conn.get_entry(agreement_dn, ['*'])
 -- 
-1.9.3
+2.4.3
 

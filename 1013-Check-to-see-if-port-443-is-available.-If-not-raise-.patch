@@ -1,19 +1,20 @@
-From d09275faca0a1d768592f066c165c4469979a46b Mon Sep 17 00:00:00 2001
+From 01e78629ff2587280bce084a07289c78caff5477 Mon Sep 17 00:00:00 2001
 From: Rob Crittenden <rcritten@redhat.com>
 Date: Wed, 21 Nov 2012 15:53:21 -0500
-Subject: [PATCH] Check to see if port 443 is available. If not raise an exception.
+Subject: [PATCH] Check to see if port 443 is available. If not raise an
+ exception.
 
 ---
- install/tools/ipa-replica-install |    4 ++++
- install/tools/ipa-server-install  |    4 ++++
- ipaserver/install/httpinstance.py |   27 +++++++++++++++++++++------
+ install/tools/ipa-replica-install |  4 ++++
+ install/tools/ipa-server-install  |  4 ++++
+ ipaserver/install/httpinstance.py | 27 +++++++++++++++++++++------
  3 files changed, 29 insertions(+), 6 deletions(-)
 
 diff --git a/install/tools/ipa-replica-install b/install/tools/ipa-replica-install
-index b56fa2e..fe29d5d 100755
+index bcd66903c0bface52d106e92957e2a497b25d006..f7cf023bbccd512e109d63cd0a3d77246a48d308 100755
 --- a/install/tools/ipa-replica-install
 +++ b/install/tools/ipa-replica-install
-@@ -421,6 +421,10 @@ def main():
+@@ -324,6 +324,10 @@ def main():
      if options.setup_dns:
          check_bind()
  
@@ -25,10 +26,10 @@ index b56fa2e..fe29d5d 100755
  
      # get the directory manager password
 diff --git a/install/tools/ipa-server-install b/install/tools/ipa-server-install
-index 6d1e699..6333d28 100755
+index acc47bb0c2c1b7a0e21625c4d6e8bfbe1761a115..28ed9dbd7e3fa5bc28f3ebf694f34dbff8b4b90e 100755
 --- a/install/tools/ipa-server-install
 +++ b/install/tools/ipa-server-install
-@@ -727,6 +727,10 @@ def main():
+@@ -735,6 +735,10 @@ def main():
          # setting up a local DNS server.
          options.no_host_dns = True
  
@@ -40,7 +41,7 @@ index 6d1e699..6333d28 100755
      # utilities just use the hostname as returned by getaddrinfo to set
      # up some of the standard entries
 diff --git a/ipaserver/install/httpinstance.py b/ipaserver/install/httpinstance.py
-index 5c35b5c..dda25b3 100644
+index 925ce5845f6982230b45a3e47b955f903028e43a..76e707ad3e628feb2e2f758065658aad560dc415 100644
 --- a/ipaserver/install/httpinstance.py
 +++ b/ipaserver/install/httpinstance.py
 @@ -46,6 +46,27 @@ change with the command:
@@ -77,9 +78,9 @@ index 5c35b5c..dda25b3 100644
  
 -        self.step("disabling mod_ssl in httpd", self.__disable_mod_ssl)
          self.step("setting mod_nss port to 443", self.__set_mod_nss_port)
-         self.step("setting mod_nss password file", self.__set_mod_nss_passwordfile)
-         self.step("enabling mod_nss renegotiate", self.enable_mod_nss_renegotiate)
-@@ -206,11 +226,6 @@ class HTTPInstance(service.Service):
+         self.step("setting mod_nss protocol list to TLSv1.0 - TLSv1.2",
+                   self.set_mod_nss_protocol)
+@@ -208,11 +228,6 @@ class HTTPInstance(service.Service):
          http_fd.close()
          os.chmod(target_fname, 0644)
  
@@ -92,5 +93,5 @@ index 5c35b5c..dda25b3 100644
          self.fstore.backup_file(NSS_CONF)
          if installutils.update_file(NSS_CONF, '8443', '443') != 0:
 -- 
-1.7.1
+2.4.3
 

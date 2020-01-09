@@ -1,8 +1,8 @@
-From 9181bd6434d22ecab43861f00dcb8ed56e7fcfe9 Mon Sep 17 00:00:00 2001
+From e13d3eb2373e23fef38087b359373874d8a46033 Mon Sep 17 00:00:00 2001
 From: Rob Crittenden <rcritten@redhat.com>
 Date: Wed, 6 Mar 2013 14:28:18 -0500
-Subject: [PATCH 1/2] Don't base64-encode the CA cert when uploading it during
- an upgrade.
+Subject: [PATCH] Don't base64-encode the CA cert when uploading it during an
+ upgrade.
 
 We want to store the raw value. Tools like ldapsearch will automatically
 base64 encode the value because it's binary so we don't want to duplicate
@@ -17,7 +17,7 @@ diff --git a/ipaserver/install/plugins/upload_cacrt.py b/ipaserver/install/plugi
 index d60247b7c4884d35646cd4cb8ea3435bbcb6c0f5..a82fc36bfaa68be282846aa6ed6426dc4c941132 100644
 --- a/ipaserver/install/plugins/upload_cacrt.py
 +++ b/ipaserver/install/plugins/upload_cacrt.py
-@@ -39,7 +39,6 @@ def execute(self, **options):
+@@ -39,7 +39,6 @@ class update_upload_cacrt(PostUpdate):
          certdb = certs.CertDB(api.env.realm, nssdir=dirname, subject_base=subject_base)
  
          dercert = certdb.get_cert_from_db(certdb.cacert_name, pem=False)
@@ -25,7 +25,7 @@ index d60247b7c4884d35646cd4cb8ea3435bbcb6c0f5..a82fc36bfaa68be282846aa6ed6426dc
  
          updates = {}
          dn = DN(('cn', 'CACert'), ('cn', 'ipa'), ('cn','etc'), api.env.basedn)
-@@ -47,7 +46,7 @@ def execute(self, **options):
+@@ -47,7 +46,7 @@ class update_upload_cacrt(PostUpdate):
          cacrt_entry = ['objectclass:nsContainer',
                         'objectclass:pkiCA',
                         'cn:CAcert',
@@ -35,5 +35,5 @@ index d60247b7c4884d35646cd4cb8ea3435bbcb6c0f5..a82fc36bfaa68be282846aa6ed6426dc
          updates[dn] = {'dn': dn, 'default': cacrt_entry}
  
 -- 
-1.8.1.4
+2.4.3
 

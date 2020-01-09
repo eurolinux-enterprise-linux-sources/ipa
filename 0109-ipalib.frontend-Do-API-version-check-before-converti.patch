@@ -1,8 +1,8 @@
-From ab4b8bd8e262e226fe40d022f7a46d9a9758bc1f Mon Sep 17 00:00:00 2001
+From eaee87d63e02f29d502047066ab541161acde888 Mon Sep 17 00:00:00 2001
 From: Petr Viktorin <pviktori@redhat.com>
 Date: Fri, 6 Jun 2014 14:21:16 +0200
-Subject: [PATCH 109/116] ipalib.frontend: Do API version check before
- converting arguments
+Subject: [PATCH] ipalib.frontend: Do API version check before converting
+ arguments
 
 This results in the proper message being shown if the client sends
 an option the server doesn't have yet.
@@ -18,7 +18,7 @@ diff --git a/ipalib/frontend.py b/ipalib/frontend.py
 index fadcb8632cab9d7a49aacc72d9e804ba7766f33a..57713c192baf22c24d8f95e01a5d52f41634a1ec 100644
 --- a/ipalib/frontend.py
 +++ b/ipalib/frontend.py
-@@ -418,6 +418,9 @@ def __call__(self, *args, **options):
+@@ -418,6 +418,9 @@ class Command(HasParam):
          XML-RPC and the executed an the nearest IPA server.
          """
          self.ensure_finalized()
@@ -29,5 +29,5 @@ index fadcb8632cab9d7a49aacc72d9e804ba7766f33a..57713c192baf22c24d8f95e01a5d52f4
          self.debug(
              'raw: %s(%s)', self.name, ', '.join(self._repr_iter(**params))
 -- 
-1.9.3
+2.4.3
 

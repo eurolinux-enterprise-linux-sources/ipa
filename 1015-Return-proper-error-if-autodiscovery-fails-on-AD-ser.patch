@@ -1,4 +1,4 @@
-From 730842169d3ed300ab7a202813d7dd19acbb9d1a Mon Sep 17 00:00:00 2001
+From 968052d137cd36c2dcc1127cf24d56f877dd35c6 Mon Sep 17 00:00:00 2001
 From: Petr Vobornik <pvoborni@redhat.com>
 Date: Thu, 26 Feb 2015 19:39:14 +0100
 Subject: [PATCH] Return proper error if autodiscovery fails on AD server
@@ -9,13 +9,13 @@ https://bugzilla.redhat.com/show_bug.cgi?id=1132261
  1 file changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/ipapython/ipautil.py b/ipapython/ipautil.py
-index e3b724a1af490b5763f9a01a8e9fbff7273dbd97..df5a8cf0b51cfd7dea9b1f075ed755e67895b2ad 100644
+index e3b724a1af490b5763f9a01a8e9fbff7273dbd97..8fcc3ee3be0c1d6f2f0d596a512130ece9f277a5 100644
 --- a/ipapython/ipautil.py
 +++ b/ipapython/ipautil.py
 @@ -814,7 +814,10 @@ def get_ipa_basedn(conn):
          '', scope=ldap.SCOPE_BASE, attrlist=['defaultnamingcontext', 'namingcontexts']
      )
-
+ 
 -    contexts = entries[0][1]['namingcontexts']
 +    contexts = entries[0][1].get('namingcontexts')
 +    if not contexts:
@@ -24,6 +24,6 @@ index e3b724a1af490b5763f9a01a8e9fbff7273dbd97..df5a8cf0b51cfd7dea9b1f075ed755e6
      if entries[0][1].get('defaultnamingcontext'):
          # If there is a defaultNamingContext examine that one first
          default = entries[0][1]['defaultnamingcontext'][0]
---
-2.1.0
+-- 
+2.4.3
 

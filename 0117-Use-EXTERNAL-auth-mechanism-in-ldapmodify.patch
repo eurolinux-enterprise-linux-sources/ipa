@@ -1,7 +1,7 @@
-From 8243b14bf2451e7a3a98ad3eef40a2ce062c97dc Mon Sep 17 00:00:00 2001
+From 79a8f1dc965f43a8c7140a3c3301d4c7f63ae3b1 Mon Sep 17 00:00:00 2001
 From: Ana Krivokapic <akrivoka@redhat.com>
 Date: Thu, 19 Jun 2014 10:04:01 +0200
-Subject: [PATCH 117/119] Use EXTERNAL auth mechanism in ldapmodify
+Subject: [PATCH] Use EXTERNAL auth mechanism in ldapmodify
 
 Default to using the EXTERNAL authorization mechanism in calls to ldapmodify
 
@@ -14,7 +14,7 @@ diff --git a/ipaserver/install/service.py b/ipaserver/install/service.py
 index 88b47da342fc4bf27defe64a4105221fa1d6b1c1..55a9b26af51ba6900c2f423ddb4eb78277a42068 100644
 --- a/ipaserver/install/service.py
 +++ b/ipaserver/install/service.py
-@@ -124,17 +124,15 @@ def ldap_connect(self):
+@@ -124,17 +124,15 @@ class Service(object):
  
          self.admin_conn = conn
  
@@ -34,7 +34,7 @@ index 88b47da342fc4bf27defe64a4105221fa1d6b1c1..55a9b26af51ba6900c2f423ddb4eb782
  
          if sub_dict is not None:
              txt = ipautil.template_file(path, sub_dict)
-@@ -142,9 +140,9 @@ def _ldap_mod(self, ldif, sub_dict = None):
+@@ -142,9 +140,9 @@ class Service(object):
              path = fd.name
  
              # do not log passwords
@@ -46,7 +46,7 @@ index 88b47da342fc4bf27defe64a4105221fa1d6b1c1..55a9b26af51ba6900c2f423ddb4eb782
                  nologlist.append(sub_dict['RANDOM_PASSWORD'])
  
          args = ["/usr/bin/ldapmodify", "-v", "-f", path]
-@@ -155,16 +153,18 @@ def _ldap_mod(self, ldif, sub_dict = None):
+@@ -155,16 +153,18 @@ class Service(object):
              self.ldap_connect()
          args += ["-H", self.admin_conn.uri]
  
@@ -70,5 +70,5 @@ index 88b47da342fc4bf27defe64a4105221fa1d6b1c1..55a9b26af51ba6900c2f423ddb4eb782
          args += auth_parms
  
 -- 
-1.9.3
+2.4.3
 

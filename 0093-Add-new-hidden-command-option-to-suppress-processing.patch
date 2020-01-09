@@ -1,7 +1,7 @@
-From 47162e51a7ae74c0068da3246d8be1624292ffda Mon Sep 17 00:00:00 2001
+From 1371ecb18e7bcb3ff96e35662baf8852b286705f Mon Sep 17 00:00:00 2001
 From: Jan Cholasta <jcholast@redhat.com>
 Date: Fri, 2 Aug 2013 11:24:55 +0200
-Subject: [PATCH 93/98] Add new hidden command option to suppress processing of
+Subject: [PATCH] Add new hidden command option to suppress processing of
  membership attributes.
 
 https://fedorahosted.org/freeipa/ticket/3706
@@ -15,7 +15,7 @@ diff --git a/API.txt b/API.txt
 index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e128201f668 100644
 --- a/API.txt
 +++ b/API.txt
-@@ -1216,7 +1216,7 @@ command: env
+@@ -1216,7 +1216,7 @@ output: Output('total', <type 'int'>, None)
  output: Output('count', <type 'int'>, None)
  output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  command: group_add
@@ -24,7 +24,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='group_name', maxlength=255, multivalue=False, pattern='^[a-zA-Z0-9_.][a-zA-Z0-9_.-]{0,252}[a-zA-Z0-9_.$-]?$', primary_key=True, required=True)
  option: Str('description', attribute=True, cli_name='desc', multivalue=False, required=True)
  option: Int('gidnumber', attribute=True, cli_name='gid', minvalue=1, multivalue=False, required=False)
-@@ -1227,16 +1227,18 @@ command: group_add
+@@ -1227,16 +1227,18 @@ option: Flag('external', autofill=True, cli_name='external', default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -44,7 +44,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('user*', alwaysask=True, cli_name='users', csv=True)
  option: Str('group*', alwaysask=True, cli_name='groups', csv=True)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
-@@ -1256,7 +1258,7 @@ command: group_detach
+@@ -1256,7 +1258,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'bool'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: group_find
@@ -53,7 +53,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('cn', attribute=True, autofill=False, cli_name='group_name', maxlength=255, multivalue=False, pattern='^[a-zA-Z0-9_.][a-zA-Z0-9_.-]{0,252}[a-zA-Z0-9_.$-]?$', primary_key=True, query=True, required=False)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, query=True, required=False)
-@@ -1267,6 +1269,7 @@ command: group_find
+@@ -1267,6 +1269,7 @@ option: Flag('private', autofill=True, cli_name='private', default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -61,7 +61,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Flag('pkey_only?', autofill=True, default=False)
  option: Str('user*', cli_name='users', csv=True)
  option: Str('no_user*', cli_name='no_users', csv=True)
-@@ -1287,7 +1290,7 @@ command: group_find
+@@ -1287,7 +1290,7 @@ output: ListOfEntries('result', (<type 'list'>, <type 'tuple'>), Gettext('A list
  output: Output('count', <type 'int'>, None)
  output: Output('truncated', <type 'bool'>, None)
  command: group_mod
@@ -70,7 +70,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='group_name', maxlength=255, multivalue=False, pattern='^[a-zA-Z0-9_.][a-zA-Z0-9_.-]{0,252}[a-zA-Z0-9_.$-]?$', primary_key=True, query=True, required=True)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, required=False)
  option: Int('gidnumber', attribute=True, autofill=False, cli_name='gid', minvalue=1, multivalue=False, required=False)
-@@ -1300,34 +1303,37 @@ command: group_mod
+@@ -1300,34 +1303,37 @@ option: Flag('external', autofill=True, cli_name='external', default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -111,7 +111,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='name', multivalue=False, primary_key=True, required=True)
  option: StrEnum('accessruletype', attribute=True, autofill=True, cli_name='type', default=u'allow', exclude='webui', multivalue=False, required=True, values=(u'allow', u'deny'))
  option: StrEnum('usercategory', attribute=True, cli_name='usercat', multivalue=False, required=False, values=(u'all',))
-@@ -1344,48 +1350,53 @@ command: hbacrule_add
+@@ -1344,48 +1350,53 @@ option: Str('addattr*', cli_name='addattr', exclude='webui')
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -169,7 +169,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('user*', alwaysask=True, cli_name='users', csv=True)
  option: Str('group*', alwaysask=True, cli_name='groups', csv=True)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
-@@ -1411,7 +1422,7 @@ command: hbacrule_enable
+@@ -1411,7 +1422,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'bool'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: hbacrule_find
@@ -178,7 +178,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('cn', attribute=True, autofill=False, cli_name='name', multivalue=False, primary_key=True, query=True, required=False)
  option: StrEnum('accessruletype', attribute=True, autofill=False, cli_name='type', default=u'allow', exclude='webui', multivalue=False, query=True, required=False, values=(u'allow', u'deny'))
-@@ -1429,13 +1440,14 @@ command: hbacrule_find
+@@ -1429,13 +1440,14 @@ option: Int('sizelimit?', autofill=False, minvalue=0)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -194,7 +194,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='name', multivalue=False, primary_key=True, query=True, required=True)
  option: StrEnum('accessruletype', attribute=True, autofill=False, cli_name='type', default=u'allow', exclude='webui', multivalue=False, required=False, values=(u'allow', u'deny'))
  option: StrEnum('usercategory', attribute=True, autofill=False, cli_name='usercat', multivalue=False, required=False, values=(u'all',))
-@@ -1454,65 +1466,71 @@ command: hbacrule_mod
+@@ -1454,65 +1466,71 @@ option: Flag('rights', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -272,7 +272,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='service', multivalue=False, primary_key=True, required=True)
  option: Str('description', attribute=True, cli_name='desc', multivalue=False, required=False)
  option: Str('setattr*', cli_name='setattr', exclude='webui')
-@@ -1520,6 +1538,7 @@ command: hbacsvc_add
+@@ -1520,6 +1538,7 @@ option: Str('addattr*', cli_name='addattr', exclude='webui')
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -280,7 +280,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('value', <type 'unicode'>, None)
-@@ -1531,7 +1550,7 @@ command: hbacsvc_del
+@@ -1531,7 +1550,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'dict'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: hbacsvc_find
@@ -289,7 +289,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('cn', attribute=True, autofill=False, cli_name='service', multivalue=False, primary_key=True, query=True, required=False)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, query=True, required=False)
-@@ -1540,13 +1559,14 @@ command: hbacsvc_find
+@@ -1540,13 +1559,14 @@ option: Int('sizelimit?', autofill=False, minvalue=0)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -305,7 +305,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='service', multivalue=False, primary_key=True, query=True, required=True)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, required=False)
  option: Str('setattr*', cli_name='setattr', exclude='webui')
-@@ -1556,21 +1576,23 @@ command: hbacsvc_mod
+@@ -1556,21 +1576,23 @@ option: Flag('rights', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -331,7 +331,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='name', multivalue=False, primary_key=True, required=True)
  option: Str('description', attribute=True, cli_name='desc', multivalue=False, required=True)
  option: Str('setattr*', cli_name='setattr', exclude='webui')
-@@ -1578,15 +1600,17 @@ command: hbacsvcgroup_add
+@@ -1578,15 +1600,17 @@ option: Str('addattr*', cli_name='addattr', exclude='webui')
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -350,7 +350,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('hbacsvc*', alwaysask=True, cli_name='hbacsvcs', csv=True)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('failed', <type 'dict'>, None)
-@@ -1599,7 +1623,7 @@ command: hbacsvcgroup_del
+@@ -1599,7 +1623,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'dict'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: hbacsvcgroup_find
@@ -359,7 +359,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('cn', attribute=True, autofill=False, cli_name='name', multivalue=False, primary_key=True, query=True, required=False)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, query=True, required=False)
-@@ -1608,13 +1632,14 @@ command: hbacsvcgroup_find
+@@ -1608,13 +1632,14 @@ option: Int('sizelimit?', autofill=False, minvalue=0)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -375,7 +375,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='name', multivalue=False, primary_key=True, query=True, required=True)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, required=False)
  option: Str('setattr*', cli_name='setattr', exclude='webui')
-@@ -1624,26 +1649,29 @@ command: hbacsvcgroup_mod
+@@ -1624,26 +1649,29 @@ option: Flag('rights', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -407,7 +407,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('value', <type 'unicode'>, None)
-@@ -1665,7 +1693,7 @@ command: hbactest
+@@ -1665,7 +1693,7 @@ output: Output('notmatched', (<type 'list'>, <type 'tuple'>, <type 'NoneType'>),
  output: Output('error', (<type 'list'>, <type 'tuple'>, <type 'NoneType'>), None)
  output: Output('value', <type 'bool'>, None)
  command: host_add
@@ -416,7 +416,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('fqdn', attribute=True, cli_name='hostname', multivalue=False, primary_key=True, required=True)
  option: Str('description', attribute=True, cli_name='desc', multivalue=False, required=False)
  option: Str('l', attribute=True, cli_name='locality', multivalue=False, required=False)
-@@ -1686,15 +1714,17 @@ command: host_add
+@@ -1686,15 +1714,17 @@ option: Str('ip_address?')
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -435,7 +435,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('host*', alwaysask=True, cli_name='hosts', csv=True)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('failed', <type 'dict'>, None)
-@@ -1713,7 +1743,7 @@ command: host_disable
+@@ -1713,7 +1743,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'bool'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: host_find
@@ -444,7 +444,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('fqdn', attribute=True, autofill=False, cli_name='hostname', multivalue=False, primary_key=True, query=True, required=False)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, query=True, required=False)
-@@ -1730,6 +1760,7 @@ command: host_find
+@@ -1730,6 +1760,7 @@ option: Int('sizelimit?', autofill=False, minvalue=0)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -452,7 +452,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Flag('pkey_only?', autofill=True, default=False)
  option: Str('in_hostgroup*', cli_name='in_hostgroups', csv=True)
  option: Str('not_in_hostgroup*', cli_name='not_in_hostgroups', csv=True)
-@@ -1752,7 +1783,7 @@ command: host_find
+@@ -1752,7 +1783,7 @@ output: ListOfEntries('result', (<type 'list'>, <type 'tuple'>), Gettext('A list
  output: Output('count', <type 'int'>, None)
  output: Output('truncated', <type 'bool'>, None)
  command: host_mod
@@ -461,7 +461,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('fqdn', attribute=True, cli_name='hostname', multivalue=False, primary_key=True, query=True, required=True)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, required=False)
  option: Str('l', attribute=True, autofill=False, cli_name='locality', multivalue=False, required=False)
-@@ -1774,32 +1805,35 @@ command: host_mod
+@@ -1774,32 +1805,35 @@ option: Flag('updatedns?', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -500,7 +500,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='hostgroup_name', multivalue=False, pattern='^[a-zA-Z0-9_.][a-zA-Z0-9_.-]*$', primary_key=True, required=True)
  option: Str('description', attribute=True, cli_name='desc', multivalue=False, required=True)
  option: Str('setattr*', cli_name='setattr', exclude='webui')
-@@ -1807,15 +1841,17 @@ command: hostgroup_add
+@@ -1807,15 +1841,17 @@ option: Str('addattr*', cli_name='addattr', exclude='webui')
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -519,7 +519,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('host*', alwaysask=True, cli_name='hosts', csv=True)
  option: Str('hostgroup*', alwaysask=True, cli_name='hostgroups', csv=True)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
-@@ -1829,7 +1865,7 @@ command: hostgroup_del
+@@ -1829,7 +1865,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'dict'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: hostgroup_find
@@ -528,7 +528,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('cn', attribute=True, autofill=False, cli_name='hostgroup_name', multivalue=False, pattern='^[a-zA-Z0-9_.][a-zA-Z0-9_.-]*$', primary_key=True, query=True, required=False)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, query=True, required=False)
-@@ -1838,6 +1874,7 @@ command: hostgroup_find
+@@ -1838,6 +1874,7 @@ option: Int('sizelimit?', autofill=False, minvalue=0)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -536,7 +536,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Flag('pkey_only?', autofill=True, default=False)
  option: Str('host*', cli_name='hosts', csv=True)
  option: Str('no_host*', cli_name='no_hosts', csv=True)
-@@ -1856,7 +1893,7 @@ command: hostgroup_find
+@@ -1856,7 +1893,7 @@ output: ListOfEntries('result', (<type 'list'>, <type 'tuple'>), Gettext('A list
  output: Output('count', <type 'int'>, None)
  output: Output('truncated', <type 'bool'>, None)
  command: hostgroup_mod
@@ -545,7 +545,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='hostgroup_name', multivalue=False, pattern='^[a-zA-Z0-9_.][a-zA-Z0-9_.-]*$', primary_key=True, query=True, required=True)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, required=False)
  option: Str('setattr*', cli_name='setattr', exclude='webui')
-@@ -1866,27 +1903,30 @@ command: hostgroup_mod
+@@ -1866,27 +1903,30 @@ option: Flag('rights', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -578,7 +578,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('value', <type 'unicode'>, None)
-@@ -2035,7 +2075,7 @@ command: migrate_ds
+@@ -2035,7 +2075,7 @@ output: Output('failed', <type 'dict'>, None)
  output: Output('enabled', <type 'bool'>, None)
  output: Output('compat', <type 'bool'>, None)
  command: netgroup_add
@@ -587,7 +587,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='name', multivalue=False, pattern='^[a-zA-Z0-9_.][a-zA-Z0-9_.-]*$', primary_key=True, required=True)
  option: Str('description', attribute=True, cli_name='desc', multivalue=False, required=True)
  option: Str('nisdomainname', attribute=True, cli_name='nisdomain', multivalue=False, pattern='^[a-zA-Z0-9_.][a-zA-Z0-9_.-]*$', required=False)
-@@ -2047,15 +2087,17 @@ command: netgroup_add
+@@ -2047,15 +2087,17 @@ option: Str('addattr*', cli_name='addattr', exclude='webui')
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -606,7 +606,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('user*', alwaysask=True, cli_name='users', csv=True)
  option: Str('group*', alwaysask=True, cli_name='groups', csv=True)
  option: Str('host*', alwaysask=True, cli_name='hosts', csv=True)
-@@ -2072,7 +2114,7 @@ command: netgroup_del
+@@ -2072,7 +2114,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'dict'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: netgroup_find
@@ -615,7 +615,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('cn', attribute=True, autofill=False, cli_name='name', multivalue=False, pattern='^[a-zA-Z0-9_.][a-zA-Z0-9_.-]*$', primary_key=True, query=True, required=False)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, query=True, required=False)
-@@ -2088,6 +2130,7 @@ command: netgroup_find
+@@ -2088,6 +2130,7 @@ option: Flag('managed', autofill=True, cli_name='managed', default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -623,7 +623,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Flag('pkey_only?', autofill=True, default=False)
  option: Str('netgroup*', cli_name='netgroups', csv=True)
  option: Str('no_netgroup*', cli_name='no_netgroups', csv=True)
-@@ -2106,7 +2149,7 @@ command: netgroup_find
+@@ -2106,7 +2149,7 @@ output: ListOfEntries('result', (<type 'list'>, <type 'tuple'>), Gettext('A list
  output: Output('count', <type 'int'>, None)
  output: Output('truncated', <type 'bool'>, None)
  command: netgroup_mod
@@ -632,7 +632,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='name', multivalue=False, pattern='^[a-zA-Z0-9_.][a-zA-Z0-9_.-]*$', primary_key=True, query=True, required=True)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, required=False)
  option: Str('nisdomainname', attribute=True, autofill=False, cli_name='nisdomain', multivalue=False, pattern='^[a-zA-Z0-9_.][a-zA-Z0-9_.-]*$', required=False)
-@@ -2120,15 +2163,17 @@ command: netgroup_mod
+@@ -2120,15 +2163,17 @@ option: Flag('rights', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -651,7 +651,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('user*', alwaysask=True, cli_name='users', csv=True)
  option: Str('group*', alwaysask=True, cli_name='groups', csv=True)
  option: Str('host*', alwaysask=True, cli_name='hosts', csv=True)
-@@ -2138,12 +2183,13 @@ command: netgroup_remove_member
+@@ -2138,12 +2183,13 @@ output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDA
  output: Output('failed', <type 'dict'>, None)
  output: Output('completed', <type 'int'>, None)
  command: netgroup_show
@@ -666,7 +666,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('value', <type 'unicode'>, None)
-@@ -2156,7 +2202,7 @@ command: passwd
+@@ -2156,7 +2202,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'bool'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: permission_add
@@ -675,7 +675,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='name', multivalue=False, pattern='^[-_ a-zA-Z0-9]+$', primary_key=True, required=True)
  option: Str('permissions', attribute=True, cli_name='permissions', csv=True, multivalue=True, required=True)
  option: Str('attrs', alwaysask=True, attribute=True, autofill=False, cli_name='attrs', csv=True, multivalue=True, query=False, required=False)
-@@ -2170,26 +2216,29 @@ command: permission_add
+@@ -2170,26 +2216,29 @@ option: Str('addattr*', cli_name='addattr', exclude='webui')
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -707,7 +707,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('value', <type 'unicode'>, None)
-@@ -2202,7 +2251,7 @@ command: permission_del
+@@ -2202,7 +2251,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'dict'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: permission_find
@@ -716,7 +716,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('cn', attribute=True, autofill=False, cli_name='name', multivalue=False, pattern='^[-_ a-zA-Z0-9]+$', primary_key=True, query=True, required=False)
  option: Str('permissions', attribute=True, autofill=False, cli_name='permissions', csv=True, multivalue=True, query=True, required=False)
-@@ -2217,13 +2266,14 @@ command: permission_find
+@@ -2217,13 +2266,14 @@ option: Int('sizelimit?', autofill=False, minvalue=0)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -732,7 +732,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='name', multivalue=False, pattern='^[-_ a-zA-Z0-9]+$', primary_key=True, query=True, required=True)
  option: Str('permissions', attribute=True, autofill=False, cli_name='permissions', csv=True, multivalue=True, required=False)
  option: Str('attrs', attribute=True, autofill=False, cli_name='attrs', csv=True, multivalue=True, required=False)
-@@ -2239,27 +2289,30 @@ command: permission_mod
+@@ -2239,27 +2289,30 @@ option: Flag('rights', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -765,7 +765,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('value', <type 'unicode'>, None)
-@@ -2278,7 +2331,7 @@ command: plugins
+@@ -2278,7 +2331,7 @@ output: Output('result', <type 'dict'>, None)
  output: Output('count', <type 'int'>, None)
  output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  command: privilege_add
@@ -774,7 +774,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='name', multivalue=False, primary_key=True, required=True)
  option: Str('description', attribute=True, cli_name='desc', multivalue=False, required=True)
  option: Str('setattr*', cli_name='setattr', exclude='webui')
-@@ -2286,25 +2339,28 @@ command: privilege_add
+@@ -2286,25 +2339,28 @@ option: Str('addattr*', cli_name='addattr', exclude='webui')
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -805,7 +805,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('permission*', alwaysask=True, cli_name='permissions', csv=True)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('failed', <type 'dict'>, None)
-@@ -2317,7 +2373,7 @@ command: privilege_del
+@@ -2317,7 +2373,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'dict'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: privilege_find
@@ -814,7 +814,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('cn', attribute=True, autofill=False, cli_name='name', multivalue=False, primary_key=True, query=True, required=False)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, query=True, required=False)
-@@ -2326,13 +2382,14 @@ command: privilege_find
+@@ -2326,13 +2382,14 @@ option: Int('sizelimit?', autofill=False, minvalue=0)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -830,7 +830,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='name', multivalue=False, primary_key=True, query=True, required=True)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, required=False)
  option: Str('setattr*', cli_name='setattr', exclude='webui')
-@@ -2342,37 +2399,41 @@ command: privilege_mod
+@@ -2342,37 +2399,41 @@ option: Flag('rights', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -875,7 +875,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('value', <type 'unicode'>, None)
-@@ -2460,7 +2521,7 @@ command: pwpolicy_show
+@@ -2460,7 +2521,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('value', <type 'unicode'>, None)
  command: role_add
@@ -884,7 +884,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='name', multivalue=False, primary_key=True, required=True)
  option: Str('description', attribute=True, cli_name='desc', multivalue=False, required=True)
  option: Str('setattr*', cli_name='setattr', exclude='webui')
-@@ -2468,15 +2529,17 @@ command: role_add
+@@ -2468,15 +2529,17 @@ option: Str('addattr*', cli_name='addattr', exclude='webui')
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -903,7 +903,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('user*', alwaysask=True, cli_name='users', csv=True)
  option: Str('group*', alwaysask=True, cli_name='groups', csv=True)
  option: Str('host*', alwaysask=True, cli_name='hosts', csv=True)
-@@ -2485,11 +2548,12 @@ command: role_add_member
+@@ -2485,11 +2548,12 @@ output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDA
  output: Output('failed', <type 'dict'>, None)
  output: Output('completed', <type 'int'>, None)
  command: role_add_privilege
@@ -917,7 +917,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('privilege*', alwaysask=True, cli_name='privileges', csv=True)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('failed', <type 'dict'>, None)
-@@ -2502,7 +2566,7 @@ command: role_del
+@@ -2502,7 +2566,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'dict'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: role_find
@@ -926,7 +926,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('cn', attribute=True, autofill=False, cli_name='name', multivalue=False, primary_key=True, query=True, required=False)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, query=True, required=False)
-@@ -2511,13 +2575,14 @@ command: role_find
+@@ -2511,13 +2575,14 @@ option: Int('sizelimit?', autofill=False, minvalue=0)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -942,7 +942,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='name', multivalue=False, primary_key=True, query=True, required=True)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, required=False)
  option: Str('setattr*', cli_name='setattr', exclude='webui')
-@@ -2527,16 +2592,18 @@ command: role_mod
+@@ -2527,16 +2592,18 @@ option: Flag('rights', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -962,7 +962,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('user*', alwaysask=True, cli_name='users', csv=True)
  option: Str('group*', alwaysask=True, cli_name='groups', csv=True)
  option: Str('host*', alwaysask=True, cli_name='hosts', csv=True)
-@@ -2545,22 +2612,24 @@ command: role_remove_member
+@@ -2545,22 +2612,24 @@ output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDA
  output: Output('failed', <type 'dict'>, None)
  output: Output('completed', <type 'int'>, None)
  command: role_remove_privilege
@@ -989,7 +989,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('value', <type 'unicode'>, None)
-@@ -2616,7 +2685,7 @@ command: selfservice_show
+@@ -2616,7 +2685,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('value', <type 'unicode'>, None)
  command: selinuxusermap_add
@@ -998,7 +998,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='name', multivalue=False, primary_key=True, required=True)
  option: Str('ipaselinuxuser', attribute=True, cli_name='selinuxuser', multivalue=False, required=True)
  option: Str('seealso', attribute=True, cli_name='hbacrule', multivalue=False, required=False)
-@@ -2629,26 +2698,29 @@ command: selinuxusermap_add
+@@ -2629,26 +2698,29 @@ option: Str('addattr*', cli_name='addattr', exclude='webui')
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1030,7 +1030,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('user*', alwaysask=True, cli_name='users', csv=True)
  option: Str('group*', alwaysask=True, cli_name='groups', csv=True)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
-@@ -2674,7 +2746,7 @@ command: selinuxusermap_enable
+@@ -2674,7 +2746,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'bool'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: selinuxusermap_find
@@ -1039,7 +1039,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('cn', attribute=True, autofill=False, cli_name='name', multivalue=False, primary_key=True, query=True, required=False)
  option: Str('ipaselinuxuser', attribute=True, autofill=False, cli_name='selinuxuser', multivalue=False, query=True, required=False)
-@@ -2688,13 +2760,14 @@ command: selinuxusermap_find
+@@ -2688,13 +2760,14 @@ option: Int('sizelimit?', autofill=False, minvalue=0)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1055,7 +1055,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='name', multivalue=False, primary_key=True, query=True, required=True)
  option: Str('ipaselinuxuser', attribute=True, autofill=False, cli_name='selinuxuser', multivalue=False, required=False)
  option: Str('seealso', attribute=True, autofill=False, cli_name='hbacrule', multivalue=False, required=False)
-@@ -2709,43 +2782,47 @@ command: selinuxusermap_mod
+@@ -2709,43 +2782,47 @@ option: Flag('rights', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1107,7 +1107,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('krbprincipalname', attribute=True, cli_name='principal', multivalue=False, primary_key=True, required=True)
  option: Bytes('usercertificate', attribute=True, cli_name='certificate', multivalue=False, required=False)
  option: StrEnum('ipakrbauthzdata', attribute=True, cli_name='pac_type', csv=True, multivalue=True, required=False, values=(u'MS-PAC', u'PAD', u'NONE'))
-@@ -2755,15 +2832,17 @@ command: service_add
+@@ -2755,15 +2832,17 @@ option: Flag('force', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1126,7 +1126,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('host*', alwaysask=True, cli_name='hosts', csv=True)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('failed', <type 'dict'>, None)
-@@ -2782,7 +2861,7 @@ command: service_disable
+@@ -2782,7 +2861,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'bool'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: service_find
@@ -1135,7 +1135,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('krbprincipalname', attribute=True, autofill=False, cli_name='principal', multivalue=False, primary_key=True, query=True, required=False)
  option: StrEnum('ipakrbauthzdata', attribute=True, autofill=False, cli_name='pac_type', csv=True, multivalue=True, query=True, required=False, values=(u'MS-PAC', u'PAD', u'NONE'))
-@@ -2791,6 +2870,7 @@ command: service_find
+@@ -2791,6 +2870,7 @@ option: Int('sizelimit?', autofill=False, minvalue=0)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1143,7 +1143,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Flag('pkey_only?', autofill=True, default=False)
  option: Str('man_by_host*', cli_name='man_by_hosts', csv=True)
  option: Str('not_man_by_host*', cli_name='not_man_by_hosts', csv=True)
-@@ -2799,7 +2879,7 @@ command: service_find
+@@ -2799,7 +2879,7 @@ output: ListOfEntries('result', (<type 'list'>, <type 'tuple'>), Gettext('A list
  output: Output('count', <type 'int'>, None)
  output: Output('truncated', <type 'bool'>, None)
  command: service_mod
@@ -1152,7 +1152,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('krbprincipalname', attribute=True, cli_name='principal', multivalue=False, primary_key=True, query=True, required=True)
  option: Bytes('usercertificate', attribute=True, autofill=False, cli_name='certificate', multivalue=False, required=False)
  option: StrEnum('ipakrbauthzdata', attribute=True, autofill=False, cli_name='pac_type', csv=True, multivalue=True, required=False, values=(u'MS-PAC', u'PAD', u'NONE'))
-@@ -2810,32 +2890,35 @@ command: service_mod
+@@ -2810,32 +2890,35 @@ option: Flag('rights', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1191,7 +1191,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('sudocmd', attribute=True, cli_name='command', multivalue=False, primary_key=True, required=True)
  option: Str('description', attribute=True, cli_name='desc', multivalue=False, required=False)
  option: Str('setattr*', cli_name='setattr', exclude='webui')
-@@ -2843,6 +2926,7 @@ command: sudocmd_add
+@@ -2843,6 +2926,7 @@ option: Str('addattr*', cli_name='addattr', exclude='webui')
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1199,7 +1199,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('value', <type 'unicode'>, None)
-@@ -2854,7 +2938,7 @@ command: sudocmd_del
+@@ -2854,7 +2938,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'dict'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: sudocmd_find
@@ -1208,7 +1208,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('sudocmd', attribute=True, autofill=False, cli_name='command', multivalue=False, primary_key=True, query=True, required=False)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, query=True, required=False)
-@@ -2863,13 +2947,14 @@ command: sudocmd_find
+@@ -2863,13 +2947,14 @@ option: Int('sizelimit?', autofill=False, minvalue=0)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1224,7 +1224,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('sudocmd', attribute=True, cli_name='command', multivalue=False, primary_key=True, query=True, required=True)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, required=False)
  option: Str('setattr*', cli_name='setattr', exclude='webui')
-@@ -2879,21 +2964,23 @@ command: sudocmd_mod
+@@ -2879,21 +2964,23 @@ option: Flag('rights', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1250,7 +1250,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='sudocmdgroup_name', multivalue=False, primary_key=True, required=True)
  option: Str('description', attribute=True, cli_name='desc', multivalue=False, required=True)
  option: Str('setattr*', cli_name='setattr', exclude='webui')
-@@ -2901,15 +2988,17 @@ command: sudocmdgroup_add
+@@ -2901,15 +2988,17 @@ option: Str('addattr*', cli_name='addattr', exclude='webui')
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1269,7 +1269,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('sudocmd*', alwaysask=True, cli_name='sudocmds', csv=True)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('failed', <type 'dict'>, None)
-@@ -2922,7 +3011,7 @@ command: sudocmdgroup_del
+@@ -2922,7 +3011,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'dict'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: sudocmdgroup_find
@@ -1278,7 +1278,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('cn', attribute=True, autofill=False, cli_name='sudocmdgroup_name', multivalue=False, primary_key=True, query=True, required=False)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, query=True, required=False)
-@@ -2931,13 +3020,14 @@ command: sudocmdgroup_find
+@@ -2931,13 +3020,14 @@ option: Int('sizelimit?', autofill=False, minvalue=0)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1294,7 +1294,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='sudocmdgroup_name', multivalue=False, primary_key=True, query=True, required=True)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, required=False)
  option: Str('setattr*', cli_name='setattr', exclude='webui')
-@@ -2947,31 +3037,34 @@ command: sudocmdgroup_mod
+@@ -2947,31 +3037,34 @@ option: Flag('rights', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1332,7 +1332,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='sudorule_name', multivalue=False, primary_key=True, required=True)
  option: Str('description', attribute=True, cli_name='desc', multivalue=False, required=False)
  option: Bool('ipaenabledflag', attribute=True, cli_name='ipaenabledflag', multivalue=False, required=False)
-@@ -2990,37 +3083,41 @@ command: sudorule_add
+@@ -2990,37 +3083,41 @@ option: Str('addattr*', cli_name='addattr', exclude='webui')
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1377,7 +1377,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('host*', alwaysask=True, cli_name='hosts', csv=True)
  option: Str('hostgroup*', alwaysask=True, cli_name='hostgroups', csv=True)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
-@@ -3032,32 +3129,35 @@ command: sudorule_add_option
+@@ -3032,32 +3129,35 @@ arg: Str('cn', attribute=True, cli_name='sudorule_name', multivalue=False, prima
  option: Str('ipasudoopt', cli_name='sudooption')
  output: Output('result', None, None)
  command: sudorule_add_runasgroup
@@ -1416,7 +1416,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('user*', alwaysask=True, cli_name='users', csv=True)
  option: Str('group*', alwaysask=True, cli_name='groups', csv=True)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
-@@ -3079,7 +3179,7 @@ command: sudorule_enable
+@@ -3079,7 +3179,7 @@ args: 1,0,1
  arg: Str('cn', attribute=True, cli_name='sudorule_name', multivalue=False, primary_key=True, query=True, required=True)
  output: Output('result', None, None)
  command: sudorule_find
@@ -1425,7 +1425,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('cn', attribute=True, autofill=False, cli_name='sudorule_name', multivalue=False, primary_key=True, query=True, required=False)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, query=True, required=False)
-@@ -3099,13 +3199,14 @@ command: sudorule_find
+@@ -3099,13 +3199,14 @@ option: Int('sizelimit?', autofill=False, minvalue=0)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1441,7 +1441,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('cn', attribute=True, cli_name='sudorule_name', multivalue=False, primary_key=True, query=True, required=True)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, required=False)
  option: Bool('ipaenabledflag', attribute=True, autofill=False, cli_name='ipaenabledflag', multivalue=False, required=False)
-@@ -3126,37 +3227,41 @@ command: sudorule_mod
+@@ -3126,37 +3227,41 @@ option: Flag('rights', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1486,7 +1486,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Str('host*', alwaysask=True, cli_name='hosts', csv=True)
  option: Str('hostgroup*', alwaysask=True, cli_name='hostgroups', csv=True)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
-@@ -3168,44 +3273,48 @@ command: sudorule_remove_option
+@@ -3168,44 +3273,48 @@ arg: Str('cn', attribute=True, cli_name='sudorule_name', multivalue=False, prima
  option: Str('ipasudoopt', cli_name='sudooption')
  output: Output('result', None, None)
  command: sudorule_remove_runasgroup
@@ -1539,7 +1539,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('value', <type 'unicode'>, None)
-@@ -3272,7 +3381,7 @@ command: trust_show
+@@ -3272,7 +3381,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('value', <type 'unicode'>, None)
  command: user_add
@@ -1548,7 +1548,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('uid', attribute=True, cli_name='login', maxlength=255, multivalue=False, pattern='^[a-zA-Z0-9_.][a-zA-Z0-9_.-]{0,252}[a-zA-Z0-9_.$-]?$', primary_key=True, required=True)
  option: Str('givenname', attribute=True, cli_name='first', multivalue=False, required=True)
  option: Str('sn', attribute=True, cli_name='last', multivalue=False, required=True)
-@@ -3308,6 +3417,7 @@ command: user_add
+@@ -3308,6 +3417,7 @@ option: Flag('noprivate', autofill=True, cli_name='noprivate', default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1556,7 +1556,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('value', <type 'unicode'>, None)
-@@ -3331,7 +3441,7 @@ command: user_enable
+@@ -3331,7 +3441,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'bool'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: user_find
@@ -1565,7 +1565,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('uid', attribute=True, autofill=False, cli_name='login', maxlength=255, multivalue=False, pattern='^[a-zA-Z0-9_.][a-zA-Z0-9_.-]{0,252}[a-zA-Z0-9_.$-]?$', primary_key=True, query=True, required=False)
  option: Str('givenname', attribute=True, autofill=False, cli_name='first', multivalue=False, query=True, required=False)
-@@ -3366,6 +3476,7 @@ command: user_find
+@@ -3366,6 +3476,7 @@ option: Flag('whoami', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1573,7 +1573,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  option: Flag('pkey_only?', autofill=True, default=False)
  option: Str('in_group*', cli_name='in_groups', csv=True)
  option: Str('not_in_group*', cli_name='not_in_groups', csv=True)
-@@ -3382,7 +3493,7 @@ command: user_find
+@@ -3382,7 +3493,7 @@ output: ListOfEntries('result', (<type 'list'>, <type 'tuple'>), Gettext('A list
  output: Output('count', <type 'int'>, None)
  output: Output('truncated', <type 'bool'>, None)
  command: user_mod
@@ -1582,7 +1582,7 @@ index f1160d46498a1a9fbc0c7155e3115bd5c852b8e9..d1342729a91c7666cd8f72068fe18e12
  arg: Str('uid', attribute=True, cli_name='login', maxlength=255, multivalue=False, pattern='^[a-zA-Z0-9_.][a-zA-Z0-9_.-]{0,252}[a-zA-Z0-9_.$-]?$', primary_key=True, query=True, required=True)
  option: Str('givenname', attribute=True, autofill=False, cli_name='first', multivalue=False, required=False)
  option: Str('sn', attribute=True, autofill=False, cli_name='last', multivalue=False, required=False)
-@@ -3418,26 +3529,29 @@ command: user_mod
+@@ -3418,26 +3529,29 @@ option: Flag('rights', autofill=True, default=False)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
  option: Flag('raw', autofill=True, cli_name='raw', default=False, exclude='webui')
  option: Str('version?', exclude='webui')
@@ -1628,7 +1628,7 @@ diff --git a/ipalib/plugins/baseldap.py b/ipalib/plugins/baseldap.py
 index 2deb66ea7cc6139846cb1d8e73359440b0d47689..6de0fd7c3ec15421d5143456dd922bc0974eac3a 100644
 --- a/ipalib/plugins/baseldap.py
 +++ b/ipalib/plugins/baseldap.py
-@@ -1008,6 +1008,19 @@ def exc_func(*args, **kwargs):
+@@ -1008,6 +1008,19 @@ last, after all sets and adds."""),
                      func = exc_func
          return wrapped
  
@@ -1648,7 +1648,7 @@ index 2deb66ea7cc6139846cb1d8e73359440b0d47689..6de0fd7c3ec15421d5143456dd922bc0
  class LDAPCreate(BaseLDAPCommand, crud.Create):
      """
      Create a new entry in LDAP.
-@@ -1059,9 +1072,11 @@ def execute(self, *keys, **options):
+@@ -1059,9 +1072,11 @@ class LDAPCreate(BaseLDAPCommand, crud.Create):
          if options.get('all', False):
              attrs_list = ['*'] + self.obj.default_attributes
          else:
@@ -1663,7 +1663,7 @@ index 2deb66ea7cc6139846cb1d8e73359440b0d47689..6de0fd7c3ec15421d5143456dd922bc0
  
          for callback in self.get_callbacks('pre'):
              dn = callback(
-@@ -1219,7 +1234,10 @@ def execute(self, *keys, **options):
+@@ -1219,7 +1234,10 @@ class LDAPRetrieve(LDAPQuery):
          if options.get('all', False):
              attrs_list = ['*'] + self.obj.default_attributes
          else:
@@ -1675,7 +1675,7 @@ index 2deb66ea7cc6139846cb1d8e73359440b0d47689..6de0fd7c3ec15421d5143456dd922bc0
  
          for callback in self.get_callbacks('pre'):
              dn = callback(self, ldap, dn, attrs_list, *keys, **options)
-@@ -1310,9 +1328,11 @@ def execute(self, *keys, **options):
+@@ -1310,9 +1328,11 @@ class LDAPUpdate(LDAPQuery, crud.Update):
          if options.get('all', False):
              attrs_list = ['*'] + self.obj.default_attributes
          else:
@@ -1690,7 +1690,7 @@ index 2deb66ea7cc6139846cb1d8e73359440b0d47689..6de0fd7c3ec15421d5143456dd922bc0
  
          _check_single_value_attrs(self.params, entry_attrs)
          _check_empty_attrs(self.obj.params, entry_attrs)
-@@ -1578,9 +1598,11 @@ def execute(self, *keys, **options):
+@@ -1578,9 +1598,11 @@ class LDAPAddMember(LDAPModMember):
          if options.get('all', False):
              attrs_list = ['*'] + self.obj.default_attributes
          else:
@@ -1705,7 +1705,7 @@ index 2deb66ea7cc6139846cb1d8e73359440b0d47689..6de0fd7c3ec15421d5143456dd922bc0
  
          try:
              (dn, entry_attrs) = self._exc_wrapper(keys, options, ldap.get_entry)(
-@@ -1673,9 +1695,11 @@ def execute(self, *keys, **options):
+@@ -1673,9 +1695,11 @@ class LDAPRemoveMember(LDAPModMember):
          if options.get('all', False):
              attrs_list = ['*'] + self.obj.default_attributes
          else:
@@ -1720,7 +1720,7 @@ index 2deb66ea7cc6139846cb1d8e73359440b0d47689..6de0fd7c3ec15421d5143456dd922bc0
  
          # Give memberOf a chance to update entries
          time.sleep(.3)
-@@ -1849,9 +1873,11 @@ def execute(self, *args, **options):
+@@ -1849,9 +1873,11 @@ class LDAPSearch(BaseLDAPCommand, crud.Search):
          elif options.get('all', False):
              attrs_list = ['*'] + defattrs
          else:
@@ -1735,7 +1735,7 @@ index 2deb66ea7cc6139846cb1d8e73359440b0d47689..6de0fd7c3ec15421d5143456dd922bc0
  
          if self.obj.search_attributes:
              search_attrs = self.obj.search_attributes
-@@ -2010,7 +2036,10 @@ def execute(self, *keys, **options):
+@@ -2010,7 +2036,10 @@ class LDAPAddReverseMember(LDAPModReverseMember):
          if options.get('all', False):
              attrs_list = ['*'] + self.obj.default_attributes
          else:
@@ -1747,7 +1747,7 @@ index 2deb66ea7cc6139846cb1d8e73359440b0d47689..6de0fd7c3ec15421d5143456dd922bc0
  
          # Pull the record as it is now so we can know how many members
          # there are.
-@@ -2112,7 +2141,10 @@ def execute(self, *keys, **options):
+@@ -2112,7 +2141,10 @@ class LDAPRemoveReverseMember(LDAPModReverseMember):
          if options.get('all', False):
              attrs_list = ['*'] + self.obj.default_attributes
          else:
@@ -1760,5 +1760,5 @@ index 2deb66ea7cc6139846cb1d8e73359440b0d47689..6de0fd7c3ec15421d5143456dd922bc0
          # Pull the record as it is now so we can know how many members
          # there are.
 -- 
-1.8.3.1
+2.4.3
 

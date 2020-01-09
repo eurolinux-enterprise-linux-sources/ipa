@@ -1,7 +1,7 @@
-From 2a5e6900b89b8c210ccb74dee631b1f429b8cff2 Mon Sep 17 00:00:00 2001
+From 73dae80bd5aa1d86887000862c648f8decd9f725 Mon Sep 17 00:00:00 2001
 From: Rob Crittenden <rcritten@redhat.com>
 Date: Thu, 11 Jul 2013 16:46:34 -0400
-Subject: [PATCH 97/98] Return the correct Content-type on negotiated XML-RPC
+Subject: [PATCH] Return the correct Content-type on negotiated XML-RPC
  requests.
 
 https://fedorahosted.org/freeipa/ticket/3745
@@ -13,7 +13,7 @@ diff --git a/ipaserver/rpcserver.py b/ipaserver/rpcserver.py
 index 8bce48bea10481bb752bb162479555facdbbd313..8176b9f93eb73bfdf63e70a07155b93811117362 100644
 --- a/ipaserver/rpcserver.py
 +++ b/ipaserver/rpcserver.py
-@@ -700,6 +700,7 @@ def __call__(self, environ, start_response):
+@@ -700,6 +700,7 @@ class xmlserver(WSGIExecutioner, HTTP_Status, KerberosSession):
  
          self.debug('WSGI xmlserver.__call__:')
          user_ccache=environ.get('KRB5CCNAME')
@@ -21,7 +21,7 @@ index 8bce48bea10481bb752bb162479555facdbbd313..8176b9f93eb73bfdf63e70a07155b938
          if user_ccache is None:
              self.internal_error(environ, start_response,
                                  'xmlserver.__call__: KRB5CCNAME not defined in HTTP request environment')
-@@ -709,11 +710,10 @@ def __call__(self, environ, start_response):
+@@ -709,11 +710,10 @@ class xmlserver(WSGIExecutioner, HTTP_Status, KerberosSession):
              response = super(xmlserver, self).__call__(environ, start_response)
              if getattr(context, 'session_data', None) is None and \
                self.env.context != 'lite':
@@ -35,5 +35,5 @@ index 8bce48bea10481bb752bb162479555facdbbd313..8176b9f93eb73bfdf63e70a07155b938
              return self.marshal(None, e)
          finally:
 -- 
-1.8.3.1
+2.4.3
 

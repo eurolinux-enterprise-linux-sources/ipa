@@ -1,4 +1,4 @@
-From e1a903195c22743a037d8677deaa64fa42b59a12 Mon Sep 17 00:00:00 2001
+From 44b629caeafe54b23a941c051164c798c1b501e4 Mon Sep 17 00:00:00 2001
 From: Sumit Bose <sbose@redhat.com>
 Date: Fri, 26 Apr 2013 17:20:49 +0200
 Subject: [PATCH] Allow ID-to-SID mappings in the extdom plugin

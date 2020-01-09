@@ -1,7 +1,7 @@
-From 66eab3298e357b8e5999da6bec92bb49a767357d Mon Sep 17 00:00:00 2001
+From d7a7db57fc61baf079eb7821d856aa27c490d35d Mon Sep 17 00:00:00 2001
 From: Simo Sorce <simo@redhat.com>
 Date: Fri, 13 Jun 2014 12:38:53 +0200
-Subject: [PATCH 113/116] Harmonize policy discovery to kdb driver
+Subject: [PATCH] Harmonize policy discovery to kdb driver
 
 The KDB driver does not walk the tree back like the original password plugin.
 Also we do not store the default policy in the base DN as we used to do in the
@@ -97,12 +97,12 @@ index e57a288abf1947d28d2494cf09e7c91d3103e293..aae3024a5939164740d9663ae030e2c2
 -        scope = LDAP_SCOPE_SUBTREE;
 +        /* Fallback to hardcoded value */
 +        pdn = slapi_ch_smprintf("cn=global_policy,%s", ipa_realm_dn);
-     }
++    }
 +    if (pdn == NULL) {
 +        LOG_OOM();
 +        ret = -1;
 +        goto done;
-+    }
+     }
 +    LOG_TRACE("Using policy at [%s]\n", pdn);
 +    scope = LDAP_SCOPE_BASE;
  
@@ -176,5 +176,5 @@ index e57a288abf1947d28d2494cf09e7c91d3103e293..aae3024a5939164740d9663ae030e2c2
  }
  
 -- 
-1.9.3
+2.4.3
 

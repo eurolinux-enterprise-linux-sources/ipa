@@ -1,16 +1,16 @@
-From 7ac3ef3ad7801fe9336925eee1eb3555f61a1413 Mon Sep 17 00:00:00 2001
+From d63f46a47b2ac6b5f143b40652f0f1edffab7ded Mon Sep 17 00:00:00 2001
 From: Rob Crittenden <rcritten@redhat.com>
 Date: Thu, 30 Aug 2012 10:51:12 -0400
-Subject: [PATCH 3/8] Change branding to IPA and Identity Management
+Subject: [PATCH] Change branding to IPA and Identity Management
 
 ---
- install/tools/ipa-dns-install    |    2 +-
- install/tools/ipa-server-install |    2 +-
- install/ui/index.html            |    4 ++--
+ install/tools/ipa-dns-install    | 2 +-
+ install/tools/ipa-server-install | 2 +-
+ install/ui/index.html            | 4 ++--
  3 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/install/tools/ipa-dns-install b/install/tools/ipa-dns-install
-index d4795f72e03eed1b460a3751fc5596ac6da70900..1cedde12ca781c4419a03a0728f362ffb1ea480b 100755
+index 71592d4899d702606b33e0ac89592d91f99c5e29..2de2b569dec451c092e04ae76be70ef474ad2285 100755
 --- a/install/tools/ipa-dns-install
 +++ b/install/tools/ipa-dns-install
 @@ -112,7 +112,7 @@ def main():
@@ -23,11 +23,11 @@ index d4795f72e03eed1b460a3751fc5596ac6da70900..1cedde12ca781c4419a03a0728f362ff
      print "This includes:"
      print "  * Configure DNS (bind)"
 diff --git a/install/tools/ipa-server-install b/install/tools/ipa-server-install
-index 962f0f3e3bd47fd255f2173980354744d3ba1157..e2c769719ecffb7dd45d6e39a54ea68217f70680 100755
+index 926781a3fbac0115c3611ed01b004766e2406c9d..acc47bb0c2c1b7a0e21625c4d6e8bfbe1761a115 100755
 --- a/install/tools/ipa-server-install
 +++ b/install/tools/ipa-server-install
-@@ -665,7 +665,7 @@ def main():
-             cert = certdict[certissuer]
+@@ -689,7 +689,7 @@ def main():
+         del cert
  
      print "=============================================================================="
 -    print "This program will set up the FreeIPA Server."
@@ -36,7 +36,7 @@ index 962f0f3e3bd47fd255f2173980354744d3ba1157..e2c769719ecffb7dd45d6e39a54ea682
      print "This includes:"
      if options.selfsign:
 diff --git a/install/ui/index.html b/install/ui/index.html
-index ab51b6d57b66158d0738697ef774f28b6efcab4a..eab9e6810eeb99850822c6df70cff8d208b75cb5 100644
+index ba86a521658c7d5ddc9f79485363548648d5b14d..e863d10c8709c26d084f90533cba29f67efc6a79 100644
 --- a/install/ui/index.html
 +++ b/install/ui/index.html
 @@ -2,7 +2,7 @@
@@ -58,5 +58,5 @@ index ab51b6d57b66158d0738697ef774f28b6efcab4a..eab9e6810eeb99850822c6df70cff8d2
              <span class="header-right">
                  <span class="header-passwordexpires"></span>
 -- 
-1.7.1
+2.4.3
 

@@ -1,7 +1,7 @@
-From 449619ae37881c158de6c3e15084cd8d8afe8674 Mon Sep 17 00:00:00 2001
+From b9394e393c2981ca856d8e7e104f67e81bbe9b62 Mon Sep 17 00:00:00 2001
 From: Martin Kosek <mkosek@redhat.com>
 Date: Fri, 2 Aug 2013 10:55:55 +0200
-Subject: [PATCH 85/98] Add userClass attribute for hosts
+Subject: [PATCH] Add userClass attribute for hosts
 
 This new freeform host attribute will allow provisioning systems
 to add custom tags for host objects which can be later used for
@@ -22,7 +22,7 @@ diff --git a/API.txt b/API.txt
 index 69219f9a2d332e8c644ad42caf830e9b994d5edb..f1160d46498a1a9fbc0c7155e3115bd5c852b8e9 100644
 --- a/API.txt
 +++ b/API.txt
-@@ -1665,7 +1665,7 @@ command: hbactest
+@@ -1665,7 +1665,7 @@ output: Output('notmatched', (<type 'list'>, <type 'tuple'>, <type 'NoneType'>),
  output: Output('error', (<type 'list'>, <type 'tuple'>, <type 'NoneType'>), None)
  output: Output('value', <type 'bool'>, None)
  command: host_add
@@ -31,7 +31,7 @@ index 69219f9a2d332e8c644ad42caf830e9b994d5edb..f1160d46498a1a9fbc0c7155e3115bd5
  arg: Str('fqdn', attribute=True, cli_name='hostname', multivalue=False, primary_key=True, required=True)
  option: Str('description', attribute=True, cli_name='desc', multivalue=False, required=False)
  option: Str('l', attribute=True, cli_name='locality', multivalue=False, required=False)
-@@ -1677,6 +1677,7 @@ command: host_add
+@@ -1677,6 +1677,7 @@ option: Flag('random', attribute=False, autofill=True, cli_name='random', defaul
  option: Bytes('usercertificate', attribute=True, cli_name='certificate', multivalue=False, required=False)
  option: Str('macaddress', attribute=True, cli_name='macaddress', csv=True, multivalue=True, pattern='^([a-fA-F0-9]{2}[:|\\-]?){5}[a-fA-F0-9]{2}$', required=False)
  option: Str('ipasshpubkey', attribute=True, cli_name='sshpubkey', csv=True, multivalue=True, required=False)
@@ -39,7 +39,7 @@ index 69219f9a2d332e8c644ad42caf830e9b994d5edb..f1160d46498a1a9fbc0c7155e3115bd5
  option: Str('setattr*', cli_name='setattr', exclude='webui')
  option: Str('addattr*', cli_name='addattr', exclude='webui')
  option: Flag('force', autofill=True, default=False)
-@@ -1712,7 +1713,7 @@ command: host_disable
+@@ -1712,7 +1713,7 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'bool'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: host_find
@@ -48,7 +48,7 @@ index 69219f9a2d332e8c644ad42caf830e9b994d5edb..f1160d46498a1a9fbc0c7155e3115bd5
  arg: Str('criteria?', noextrawhitespace=False)
  option: Str('fqdn', attribute=True, autofill=False, cli_name='hostname', multivalue=False, primary_key=True, query=True, required=False)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, query=True, required=False)
-@@ -1723,6 +1724,7 @@ command: host_find
+@@ -1723,6 +1724,7 @@ option: Str('nsosversion', attribute=True, autofill=False, cli_name='os', multiv
  option: Str('userpassword', attribute=True, autofill=False, cli_name='password', multivalue=False, query=True, required=False)
  option: Bytes('usercertificate', attribute=True, autofill=False, cli_name='certificate', multivalue=False, query=True, required=False)
  option: Str('macaddress', attribute=True, autofill=False, cli_name='macaddress', csv=True, multivalue=True, pattern='^([a-fA-F0-9]{2}[:|\\-]?){5}[a-fA-F0-9]{2}$', query=True, required=False)
@@ -56,7 +56,7 @@ index 69219f9a2d332e8c644ad42caf830e9b994d5edb..f1160d46498a1a9fbc0c7155e3115bd5
  option: Int('timelimit?', autofill=False, minvalue=0)
  option: Int('sizelimit?', autofill=False, minvalue=0)
  option: Flag('all', autofill=True, cli_name='all', default=False, exclude='webui')
-@@ -1750,7 +1752,7 @@ command: host_find
+@@ -1750,7 +1752,7 @@ output: ListOfEntries('result', (<type 'list'>, <type 'tuple'>), Gettext('A list
  output: Output('count', <type 'int'>, None)
  output: Output('truncated', <type 'bool'>, None)
  command: host_mod
@@ -65,7 +65,7 @@ index 69219f9a2d332e8c644ad42caf830e9b994d5edb..f1160d46498a1a9fbc0c7155e3115bd5
  arg: Str('fqdn', attribute=True, cli_name='hostname', multivalue=False, primary_key=True, query=True, required=True)
  option: Str('description', attribute=True, autofill=False, cli_name='desc', multivalue=False, required=False)
  option: Str('l', attribute=True, autofill=False, cli_name='locality', multivalue=False, required=False)
-@@ -1762,6 +1764,7 @@ command: host_mod
+@@ -1762,6 +1764,7 @@ option: Flag('random', attribute=False, autofill=True, cli_name='random', defaul
  option: Bytes('usercertificate', attribute=True, autofill=False, cli_name='certificate', multivalue=False, required=False)
  option: Str('macaddress', attribute=True, autofill=False, cli_name='macaddress', csv=True, multivalue=True, pattern='^([a-fA-F0-9]{2}[:|\\-]?){5}[a-fA-F0-9]{2}$', required=False)
  option: Str('ipasshpubkey', attribute=True, autofill=False, cli_name='sshpubkey', csv=True, multivalue=True, required=False)
@@ -87,7 +87,7 @@ diff --git a/install/share/60basev2.ldif b/install/share/60basev2.ldif
 index 3b05e370147f6cace12913e695e02eb6550c6010..8e7174c10ddf73194bfbe634ff34c8c3fd25e264 100644
 --- a/install/share/60basev2.ldif
 +++ b/install/share/60basev2.ldif
-@@ -13,7 +13,7 @@ dn:
+@@ -13,7 +13,7 @@ attributeTypes: (2.16.840.1.113730.3.8.3.24 NAME 'ipaEntitlementId' DESC 'Entitl
  # ipaKrbAuthzData added here. Even though it is a v3 attribute it is updating
  # a v2 objectClass so needs to be here.
  attributeTypes: (2.16.840.1.113730.3.8.11.37 NAME 'ipaKrbAuthzData' DESC 'type of PAC preferred by a service' EQUALITY caseExactMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 X-ORIGIN 'IPA v3' )
@@ -100,7 +100,7 @@ diff --git a/install/updates/10-60basev3.update b/install/updates/10-60basev3.up
 index bed14f7b217335fc13fe17dbd146939a1ed4e82d..47d2eafc73c774f14ce49bae572ff33f1e911e34 100644
 --- a/install/updates/10-60basev3.update
 +++ b/install/updates/10-60basev3.update
-@@ -12,3 +12,4 @@ dn:
+@@ -12,3 +12,4 @@ replace:attributeTypes:( 2.16.840.1.113730.3.8.7.1 NAME 'memberAllowCmd' DESC 'R
  replace:attributeTypes:( 2.16.840.1.113730.3.8.7.2 NAME 'memberDenyCmd' DESC 'Reference to a command or group of commands that are denied by the rule.' SUP distinguishedName EQUALITY distinguishedNameMatch ORDERING distinguishedNameMatch SUBSTR distinguishedNameMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.12 X-ORIGIN 'IPA v2' )::( 2.16.840.1.113730.3.8.7.2 NAME 'memberDenyCmd' DESC 'Reference to a command or group of commands that are denied by the rule.' SUP distinguishedName EQUALITY distinguishedNameMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.12 X-ORIGIN 'IPA v2' )
  add:attributeTypes: (2.16.840.1.113730.3.8.11.1 NAME 'ipaExternalMember' DESC 'External Group Member Identifier' EQUALITY caseIgnoreMatch ORDERING caseIgnoreOrderingMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 X-ORIGIN 'IPA v3' )
  add:objectClasses: (2.16.840.1.113730.3.8.12.1 NAME 'ipaExternalGroup' SUP top STRUCTURAL MUST ( cn ) MAY ( ipaExternalMember $$ memberOf $$ description $$ owner) X-ORIGIN 'IPA v3' )
@@ -179,5 +179,5 @@ index 37b7e407dd1c0ed8df6728b92eb9e7a02f1029ce..25314f2fb13cc1f05aa005d3b7ec27ba
          # on same box as IPA install.
          dict(
 -- 
-1.8.3.1
+2.4.3
 

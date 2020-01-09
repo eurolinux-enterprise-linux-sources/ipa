@@ -1,32 +1,32 @@
-From 378f9b72ab238fa719ba8f92645edff915b6ce59 Mon Sep 17 00:00:00 2001
+From c49429dc85c4f7f2e2082da59a8b9e8164378681 Mon Sep 17 00:00:00 2001
 From: Rob Crittenden <rcritten@redhat.com>
 Date: Wed, 12 Sep 2012 10:43:16 -0400
-Subject: [PATCH 5/8] Remove Entitlement support
+Subject: [PATCH] Remove Entitlement support
 
 ---
- API.txt                               |   63 ---
- freeipa.spec.in                       |    4 -
- install/share/bootstrap-template.ldif |    6 -
- install/share/delegation.ldif         |   80 ----
- install/tools/Makefile.am             |    1 -
- install/tools/ipa-compliance          |  201 ---------
- install/tools/man/Makefile.am         |    2 +-
- install/tools/man/ipa-compliance.1    |   45 --
- ipa-compliance.cron                   |    5 -
- ipalib/constants.py                   |    1 -
- ipalib/plugins/entitle.py             |  748 ---------------------------------
- ipalib/plugins/internal.py            |   21 -
- 12 files changed, 1 insertions(+), 1176 deletions(-)
+ API.txt                               |  63 ---
+ freeipa.spec.in                       |   4 -
+ install/share/bootstrap-template.ldif |   6 -
+ install/share/delegation.ldif         |  80 ----
+ install/tools/Makefile.am             |   1 -
+ install/tools/ipa-compliance          | 201 ---------
+ install/tools/man/Makefile.am         |   2 +-
+ install/tools/man/ipa-compliance.1    |  45 --
+ ipa-compliance.cron                   |   5 -
+ ipalib/constants.py                   |   1 -
+ ipalib/plugins/entitle.py             | 748 ----------------------------------
+ ipalib/plugins/internal.py            |  21 -
+ 12 files changed, 1 insertion(+), 1176 deletions(-)
  delete mode 100644 install/tools/ipa-compliance
  delete mode 100644 install/tools/man/ipa-compliance.1
  delete mode 100644 ipa-compliance.cron
  delete mode 100644 ipalib/plugins/entitle.py
 
 diff --git a/API.txt b/API.txt
-index 318453f..f90c217 100644
+index 124624578af88f5f570410d4de3e05169f81e147..3290d34c710a34f558515d2f9f7bc8cfeb25f7c7 100644
 --- a/API.txt
 +++ b/API.txt
-@@ -1142,69 +1142,6 @@ option: Str('version?', exclude='webui')
+@@ -1143,69 +1143,6 @@ option: Str('version?', exclude='webui')
  output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('value', <type 'unicode'>, None)
@@ -97,10 +97,10 @@ index 318453f..f90c217 100644
  args: 1,2,4
  arg: Str('variables*')
 diff --git a/freeipa.spec.in b/freeipa.spec.in
-index dee262b..2c775b9 100644
+index e253da1ad4b1c41db9cdccd97d48d90f9f0fe658..11e7288fd39b264263c443bd54dc672826c19264 100644
 --- a/freeipa.spec.in
 +++ b/freeipa.spec.in
-@@ -443,7 +443,6 @@ mkdir -p %{buildroot}/%{_localstatedir}/lib/ipa-client/sysrestore
+@@ -469,7 +469,6 @@ mkdir -p %{buildroot}/%{_localstatedir}/lib/ipa-client/sysrestore
  mkdir -p %{buildroot}%{_sysconfdir}/bash_completion.d
  install -pm 644 contrib/completion/ipa.bash_completion %{buildroot}%{_sysconfdir}/bash_completion.d/ipa
  mkdir -p %{buildroot}%{_sysconfdir}/cron.d
@@ -108,7 +108,7 @@ index dee262b..2c775b9 100644
  
  (cd %{buildroot}/%{python_sitelib}/ipaserver && find . -type f  | \
  	grep -v dcerpc | grep -v adtrustinstance | \
-@@ -575,9 +574,7 @@ fi
+@@ -617,9 +616,7 @@ fi
  %{_sbindir}/ipa-managed-entries
  %{_sbindir}/ipactl
  %{_sbindir}/ipa-upgradeconfig
@@ -118,7 +118,7 @@ index dee262b..2c775b9 100644
  %config(noreplace) %{_sysconfdir}/sysconfig/ipa_memcached
  %dir %attr(0700,apache,apache) %{_localstatedir}/run/ipa_memcached/
  %if 0%{?fedora} >= 15
-@@ -681,7 +678,6 @@ fi
+@@ -742,7 +739,6 @@ fi
  %{_mandir}/man1/ipa-ldap-updater.1.gz
  %{_mandir}/man8/ipactl.8.gz
  %{_mandir}/man8/ipa-upgradeconfig.8.gz
@@ -127,7 +127,7 @@ index dee262b..2c775b9 100644
  %files server-selinux
  %defattr(-,root,root,-)
 diff --git a/install/share/bootstrap-template.ldif b/install/share/bootstrap-template.ldif
-index aac3f05..ae722df 100644
+index bf7de348933433c82617f4acf33b7093e76ac959..1e946bf6f9103d251d3c4c043cdf00119ed6a733 100644
 --- a/install/share/bootstrap-template.ldif
 +++ b/install/share/bootstrap-template.ldif
 @@ -125,12 +125,6 @@ objectClass: nsContainer
@@ -144,7 +144,7 @@ index aac3f05..ae722df 100644
  changetype: add
  objectClass: nsContainer
 diff --git a/install/share/delegation.ldif b/install/share/delegation.ldif
-index f62062f..1ebe2f9 100644
+index f62062fe498634d56128ebf78874c3ba91d7d09b..1ebe2f9e50dc1c902d2c4dd64627e43d598fb1a4 100644
 --- a/install/share/delegation.ldif
 +++ b/install/share/delegation.ldif
 @@ -37,23 +37,6 @@ objectClass: nestedgroup
@@ -256,7 +256,7 @@ index f62062f..1ebe2f9 100644
  # operations that don't rely on LDAP directly.
  dn: cn=virtual operations,cn=etc,$SUFFIX
 diff --git a/install/tools/Makefile.am b/install/tools/Makefile.am
-index 7f1504c..d5f0a64 100644
+index 7f1504cd59f7959d25ee291bbe7bc4d461f22c8c..d5f0a64271131a43fae23373cda2f7f174e7523d 100644
 --- a/install/tools/Makefile.am
 +++ b/install/tools/Makefile.am
 @@ -21,7 +21,6 @@ sbin_SCRIPTS =			\
@@ -269,7 +269,7 @@ index 7f1504c..d5f0a64 100644
  EXTRA_DIST =			\
 diff --git a/install/tools/ipa-compliance b/install/tools/ipa-compliance
 deleted file mode 100644
-index c82e415..0000000
+index c82e4151ff9711a3a619fc5dad576b84e17cb773..0000000000000000000000000000000000000000
 --- a/install/tools/ipa-compliance
 +++ /dev/null
 @@ -1,201 +0,0 @@
@@ -475,7 +475,7 @@ index c82e415..0000000
 -except RuntimeError, e:
 -    sys.exit(e)
 diff --git a/install/tools/man/Makefile.am b/install/tools/man/Makefile.am
-index 8d5d416..a667038 100644
+index 8d5d416d994651e210837b0b83a1635c3be9fb05..a6670381dca87690e8059dcfc4f59e4547e603e2 100644
 --- a/install/tools/man/Makefile.am
 +++ b/install/tools/man/Makefile.am
 @@ -19,7 +19,7 @@ man1_MANS = 				\
@@ -489,7 +489,7 @@ index 8d5d416..a667038 100644
  	ipactl.8			\
 diff --git a/install/tools/man/ipa-compliance.1 b/install/tools/man/ipa-compliance.1
 deleted file mode 100644
-index 4f8a619..0000000
+index 4f8a6191d16d213f14bf8bd907f625cd75a3bb33..0000000000000000000000000000000000000000
 --- a/install/tools/man/ipa-compliance.1
 +++ /dev/null
 @@ -1,45 +0,0 @@
@@ -540,7 +540,7 @@ index 4f8a619..0000000
 -Entitlements are not checked if the python\-rhsm package is not installed.
 diff --git a/ipa-compliance.cron b/ipa-compliance.cron
 deleted file mode 100644
-index 662f560..0000000
+index 662f560a7d92b878c004ca7eb7d39209d16cb6d3..0000000000000000000000000000000000000000
 --- a/ipa-compliance.cron
 +++ /dev/null
 @@ -1,5 +0,0 @@
@@ -550,7 +550,7 @@ index 662f560..0000000
 -HOME=/
 -0 0-23/4 * * * root /usr/sbin/ipa-compliance
 diff --git a/ipalib/constants.py b/ipalib/constants.py
-index 5964986..1d76af6 100644
+index 6999fd8939740e44945aaf2d3b95ec0debf18089..c0297ac109104ef738883d9c3b549d31a88b357c 100644
 --- a/ipalib/constants.py
 +++ b/ipalib/constants.py
 @@ -98,7 +98,6 @@ DEFAULT_CONFIG = (
@@ -563,7 +563,7 @@ index 5964986..1d76af6 100644
      ('container_s4u2proxy', DN(('cn', 's4u2proxy'), ('cn', 'etc'))),
 diff --git a/ipalib/plugins/entitle.py b/ipalib/plugins/entitle.py
 deleted file mode 100644
-index 1b82105..0000000
+index 1b821053d51cf74af19a16b4c7c8dc282f7fa73e..0000000000000000000000000000000000000000
 --- a/ipalib/plugins/entitle.py
 +++ /dev/null
 @@ -1,748 +0,0 @@
@@ -1316,10 +1316,10 @@ index 1b82105..0000000
 -
 -api.register(entitle_sync)
 diff --git a/ipalib/plugins/internal.py b/ipalib/plugins/internal.py
-index 09e08be..8ce67b3 100644
+index 3c313b0ec58fad037ebbecefca8b9cdbe30baa10..34ed1da0cb4540887bc2e400bee8eedc5a6c0e54 100644
 --- a/ipalib/plugins/internal.py
 +++ b/ipalib/plugins/internal.py
-@@ -387,27 +387,6 @@ class i18n_messages(Command):
+@@ -386,27 +386,6 @@ class i18n_messages(Command):
                  "add_permission":_("Add Permission"),
                  "remove_permission": _("Remove Permission"),
              },
@@ -1348,5 +1348,5 @@ index 09e08be..8ce67b3 100644
                  "details": _("Group Settings"),
                  "external": _("External"),
 -- 
-1.7.1
+2.4.3
 

@@ -1,7 +1,7 @@
-From 62a85d18ec6b2cfb122cd7a1605e5aed21fc6097 Mon Sep 17 00:00:00 2001
+From 8e1fc03ca3755f8d20b577801384ef443a9f7dcb Mon Sep 17 00:00:00 2001
 From: Tomas Babej <tbabej@redhat.com>
 Date: Fri, 2 Aug 2013 13:45:28 +0200
-Subject: [PATCH 06/10] Change group ownership of CRL publish directory
+Subject: [PATCH] Change group ownership of CRL publish directory
 
 Spec file modified so that /var/lib/ipa/pki-ca/publish/ is no
 longer owned by created with package installation. The directory
@@ -79,7 +79,7 @@ diff --git a/ipaserver/install/cainstance.py b/ipaserver/install/cainstance.py
 index 1e629eab18b5738c9af78c350e7a331b6738193b..aea56e835230f6fdd4da8341d891ee936170b50a 100644
 --- a/ipaserver/install/cainstance.py
 +++ b/ipaserver/install/cainstance.py
-@@ -1227,6 +1227,10 @@ def prepare_crl_publish_dir(self):
+@@ -1227,6 +1227,10 @@ class CAInstance(service.Service):
          Returns a path to the CRL publishing directory
          """
          publishdir = self.dogtag_constants.CRL_PUBLISH_PATH
@@ -90,7 +90,7 @@ index 1e629eab18b5738c9af78c350e7a331b6738193b..aea56e835230f6fdd4da8341d891ee93
          os.chmod(publishdir, 0775)
          pent = pwd.getpwnam(PKI_USER)
          os.chown(publishdir, 0, pent.pw_gid)
-@@ -1336,6 +1340,15 @@ def uninstall(self):
+@@ -1336,6 +1340,15 @@ class CAInstance(service.Service):
              root_logger.debug("Remove %s", f)
              installutils.remove_file(f)
  
@@ -107,5 +107,5 @@ index 1e629eab18b5738c9af78c350e7a331b6738193b..aea56e835230f6fdd4da8341d891ee93
          args = ["-L", "-n", self.canickname, "-a"]
          (cert, err, returncode) = self.__run_certutil(args)
 -- 
-1.8.3.1
+2.4.3
 

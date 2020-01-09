@@ -1,4 +1,4 @@
-From 6939656f2f3f0b0c98360d8f8c2e9864eb83a423 Mon Sep 17 00:00:00 2001
+From 7e3a696483b0bf716687b7be10de72a99e62c3c2 Mon Sep 17 00:00:00 2001
 From: Martin Kosek <mkosek@redhat.com>
 Date: Tue, 28 Aug 2012 12:25:33 +0200
 Subject: [PATCH] Revert back to acutil
@@ -12,22 +12,22 @@ referred commit were not reverted.
 This patch also enhances ipapython.dnsclient for __str__ function to
 provide better debugging output of returned DNS records.
 ---
- freeipa.spec.in                      |    5 +-
- install/tools/ipa-dns-install        |    2 +-
- ipa-client/ipaclient/ipadiscovery.py |   60 +++---
- ipalib/plugins/dns.py                |    6 +-
- ipalib/rpc.py                        |   16 +-
- ipalib/util.py                       |   18 +-
- ipapython/README                     |    3 +-
- ipapython/config.py                  |   64 ++---
- ipapython/dnsclient.py               |  431 ++++++++++++++++++++++++++++++++++
- ipapython/ipautil.py                 |   15 +-
- ipaserver/install/installutils.py    |   18 +-
+ freeipa.spec.in                      |   5 +-
+ install/tools/ipa-dns-install        |   2 +-
+ ipa-client/ipaclient/ipadiscovery.py |  60 ++---
+ ipalib/plugins/dns.py                |   6 +-
+ ipalib/rpc.py                        |  16 +-
+ ipalib/util.py                       |  18 +-
+ ipapython/README                     |   3 +-
+ ipapython/config.py                  |  64 +++---
+ ipapython/dnsclient.py               | 431 +++++++++++++++++++++++++++++++++++
+ ipapython/ipautil.py                 |  15 +-
+ ipaserver/install/installutils.py    |  18 +-
  11 files changed, 526 insertions(+), 112 deletions(-)
  create mode 100644 ipapython/dnsclient.py
 
 diff --git a/freeipa.spec.in b/freeipa.spec.in
-index f46b0b9..fbb3efa 100644
+index 11e7288fd39b264263c443bd54dc672826c19264..711b522237cc9f8e2e50ba784ba94c17032d36af 100644
 --- a/freeipa.spec.in
 +++ b/freeipa.spec.in
 @@ -87,10 +87,10 @@ BuildRequires:  python-memcached
@@ -67,7 +67,7 @@ index f46b0b9..fbb3efa 100644
  Requires: iproute
  Requires: pyOpenSSL
 diff --git a/install/tools/ipa-dns-install b/install/tools/ipa-dns-install
-index 2de2b56..02ae332 100755
+index 2de2b569dec451c092e04ae76be70ef474ad2285..02ae3327aa97b5233967c9b4db65e594892f7a3c 100755
 --- a/install/tools/ipa-dns-install
 +++ b/install/tools/ipa-dns-install
 @@ -237,7 +237,7 @@ def main():
@@ -80,10 +80,10 @@ index 2de2b56..02ae332 100755
      http = httpinstance.HTTPInstance(fstore)
      service.print_msg("Restarting the web server")
 diff --git a/ipa-client/ipaclient/ipadiscovery.py b/ipa-client/ipaclient/ipadiscovery.py
-index 63acf62..13ca038 100644
+index fe24757d55f644e1108e42e16e9d0aaf5df92e0a..a616d1fbfc4b8d8a968c46f5ce81d85aecf8edc2 100644
 --- a/ipa-client/ipaclient/ipadiscovery.py
 +++ b/ipa-client/ipaclient/ipadiscovery.py
-@@ -23,12 +23,11 @@ from ipapython.ipa_log_manager import *
+@@ -24,12 +24,11 @@ from ipapython.ipa_log_manager import *
  import tempfile
  import ldap
  from ldap import LDAPError
@@ -95,9 +95,9 @@ index 63acf62..13ca038 100644
  from ipapython.dn import DN
 +from ipapython import dnsclient
  
- NOT_FQDN = -1
- NO_LDAP_SERVER = -2
-@@ -385,26 +384,28 @@ class IPADiscovery(object):
+ CACERT = '/etc/ipa/ca.crt'
+ 
+@@ -428,26 +427,28 @@ class IPADiscovery(object):
          servers = []
  
          qname = '%s.%s' % (srv_record_name, domain)
@@ -143,10 +143,10 @@ index 63acf62..13ca038 100644
  
          return servers
  
-@@ -413,19 +414,20 @@ class IPADiscovery(object):
-         kdc = None
+@@ -457,19 +458,20 @@ class IPADiscovery(object):
+             domain = self.domain
          # now, check for a Kerberos realm the local host or domain is in
-         qname = "_kerberos." + tdomain
+         qname = "_kerberos." + domain
 +        if not qname.endswith("."):
 +            qname += "."
  
@@ -173,9 +173,9 @@ index 63acf62..13ca038 100644
 +                    realm = result.rdata.data
                  if realm:
                      break
- 
+         return realm
 diff --git a/ipalib/plugins/dns.py b/ipalib/plugins/dns.py
-index 17a794b..6c1e13b 100644
+index 07e638179614649f9b07c1401265e1a66321576c..460b408e56f39ff1c29bac2c75450395280b488a 100644
 --- a/ipalib/plugins/dns.py
 +++ b/ipalib/plugins/dns.py
 @@ -23,7 +23,6 @@ from __future__ import absolute_import
@@ -186,7 +186,7 @@ index 17a794b..6c1e13b 100644
  
  from ipalib.request import context
  from ipalib import api, errors, output
-@@ -1517,8 +1516,9 @@ def check_ns_rec_resolvable(zone, name):
+@@ -1527,8 +1526,9 @@ def check_ns_rec_resolvable(zone, name):
          name = normalize_zone(zone)
      elif not name.endswith('.'):
          # this is a DNS name relative to the zone
@@ -199,10 +199,10 @@ index 17a794b..6c1e13b 100644
          return api.Command['dns_resolve'](name)
      except errors.NotFound:
 diff --git a/ipalib/rpc.py b/ipalib/rpc.py
-index e97536d..ca24216 100644
+index c9f9e7aa28c31f5a23f596036f526e6195150835..ceb19080aeb2b5588688a4f92b0c2917a2e569ce 100644
 --- a/ipalib/rpc.py
 +++ b/ipalib/rpc.py
-@@ -40,8 +40,6 @@ import locale
+@@ -41,8 +41,6 @@ import datetime
  from xmlrpclib import (Binary, Fault, dumps, loads, ServerProxy, Transport,
          ProtocolError, MININT, MAXINT)
  import kerberos
@@ -211,15 +211,15 @@ index e97536d..ca24216 100644
  
  from ipalib.backend import Connectible
  from ipalib.errors import public_errors, PublicError, UnknownError, NetworkError, KerberosError, XMLRPCMarshallError
-@@ -51,6 +49,7 @@ from ipalib.util import get_current_principal
- from ipapython import ipautil
+@@ -54,6 +52,7 @@ from ipapython import ipautil
  from ipapython import kernel_keyring
+ from ipapython.cookie import Cookie
  from ipalib.text import _
 +from ipapython import dnsclient
  
  import httplib
  import socket
-@@ -387,14 +386,11 @@ class xmlclient(Connectible):
+@@ -477,14 +476,11 @@ class xmlclient(Connectible):
          servers = []
          name = '_ldap._tcp.%s.' % self.env.domain
  
@@ -240,7 +240,7 @@ index e97536d..ca24216 100644
          servers = list(set(servers))
          # the list/set conversion won't preserve order so stick in the
 diff --git a/ipalib/util.py b/ipalib/util.py
-index c52d060..ac42957 100644
+index 75f64bf97a9896f0d99f80da4793240186c1f9da..4eac7ee267e96ede522c49159c378cdf292a85ed 100644
 --- a/ipalib/util.py
 +++ b/ipalib/util.py
 @@ -30,12 +30,11 @@ import decimal
@@ -284,7 +284,7 @@ index c52d060..ac42957 100644
  def normalize_name(name):
      result = dict()
 diff --git a/ipapython/README b/ipapython/README
-index a724a7f..ec2bb3a 100644
+index a724a7faa4c9a7997b55a620654e31cd16cf8d16..ec2bb3a52cbd08073bfc4851f2fe3d3e3934ea10 100644
 --- a/ipapython/README
 +++ b/ipapython/README
 @@ -3,9 +3,10 @@ geared currently towards command-line tools.
@@ -300,7 +300,7 @@ index a724a7f..ec2bb3a 100644
  ipautil.py - helper functions
  
 diff --git a/ipapython/config.py b/ipapython/config.py
-index b9b0b4e..4bb1207 100644
+index b9b0b4e3d0041f728e456e75b31184f9b217a66b..4bb12072e465a0dc9dec0e64ca9834d52b0091e0 100644
 --- a/ipapython/config.py
 +++ b/ipapython/config.py
 @@ -20,10 +20,8 @@
@@ -397,7 +397,7 @@ index b9b0b4e..4bb1207 100644
  def add_standard_options(parser):
 diff --git a/ipapython/dnsclient.py b/ipapython/dnsclient.py
 new file mode 100644
-index 0000000..535f629
+index 0000000000000000000000000000000000000000..535f629b88ebc59e4a381f134a1c74f12f055748
 --- /dev/null
 +++ b/ipapython/dnsclient.py
 @@ -0,0 +1,431 @@
@@ -833,7 +833,7 @@ index 0000000..535f629
 +		DNS_C_IN, DNS_T_ANY)
 +	sys.exit(0)
 diff --git a/ipapython/ipautil.py b/ipapython/ipautil.py
-index 0b519c2..375e0f3 100644
+index 3ba57e3a857292c33b866bd4afecaba169473ec2..e3b724a1af490b5763f9a01a8e9fbff7273dbd97 100644
 --- a/ipapython/ipautil.py
 +++ b/ipapython/ipautil.py
 @@ -43,11 +43,9 @@ import datetime
@@ -868,7 +868,7 @@ index 0b519c2..375e0f3 100644
  
      return False
 diff --git a/ipaserver/install/installutils.py b/ipaserver/install/installutils.py
-index 754d5fc..62fcb90 100644
+index 754d5fc98f3122cc82064c039236f5916eabf469..62fcb90dc20d9a90ddaf8f77487eadae5c2e38af 100644
 --- a/ipaserver/install/installutils.py
 +++ b/ipaserver/install/installutils.py
 @@ -34,11 +34,9 @@ from ConfigParser import SafeConfigParser, NoOptionError
@@ -906,5 +906,5 @@ index 754d5fc..62fcb90 100644
      # list of verified addresses to prevent multiple searches for the same address
      verified = set()
 -- 
-1.7.1
+2.6.4
 

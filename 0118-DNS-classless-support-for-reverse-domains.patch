@@ -1,7 +1,7 @@
-From fd199c1224fab206f6439000adf644f2a10ca24c Mon Sep 17 00:00:00 2001
+From c06e6ad3d0c2ee938b60177fbcd98a1e60ee9617 Mon Sep 17 00:00:00 2001
 From: Martin Basti <mbasti@redhat.com>
 Date: Thu, 19 Jun 2014 10:22:34 +0200
-Subject: [PATCH 118/119] DNS classless support for reverse domains
+Subject: [PATCH] DNS classless support for reverse domains
 
 Now users can add reverse zones in classless form:
 0/25.1.168.192.in-addr.arpa.
@@ -102,7 +102,7 @@ index 17a794b53143ac665b5474c9105024a4132aa8d0..07e638179614649f9b07c1401265e1a6
      def _nsrecord_pre_callback(self, ldap, dn, entry_attrs, *keys, **options):
          assert isinstance(dn, DN)
          nsrecords = entry_attrs.get('nsrecord')
-@@ -2096,6 +2114,7 @@ def _ptrrecord_pre_callback(self, ldap, dn, entry_attrs, *keys, **options):
+@@ -2096,6 +2114,7 @@ class dnsrecord(LDAPObject):
          ptrrecords = entry_attrs.get('ptrrecord')
          if ptrrecords is None:
              return
@@ -110,7 +110,7 @@ index 17a794b53143ac665b5474c9105024a4132aa8d0..07e638179614649f9b07c1401265e1a6
          zone = keys[-2]
          if self.is_pkey_zone_record(*keys):
              addr = u''
-@@ -2114,11 +2133,16 @@ def _ptrrecord_pre_callback(self, ldap, dn, entry_attrs, *keys, **options):
+@@ -2114,11 +2133,16 @@ class dnsrecord(LDAPObject):
                      error=unicode(_('Reverse zone for PTR record should be a sub-zone of one the following fully qualified domains: %s') % allowed_zones))
  
          addr_len = len(addr.split('.')) if addr else 0
@@ -230,5 +230,5 @@ index c52d060b55b51c9dbe2791bf92f8f002be9af9da..75f64bf97a9896f0d99f80da47932401
  def normalize_sshpubkey(value):
      return SSHPublicKey(value).openssh()
 -- 
-1.9.3
+2.4.3
 

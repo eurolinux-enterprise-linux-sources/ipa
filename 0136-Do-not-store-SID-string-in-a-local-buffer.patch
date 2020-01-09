@@ -1,4 +1,4 @@
-From 93085195b533ead8951549b05343bdbf1249f148 Mon Sep 17 00:00:00 2001
+From 1dade2fde149bc5035d014777138ed111a9c080e Mon Sep 17 00:00:00 2001
 From: Sumit Bose <sbose@redhat.com>
 Date: Fri, 26 Apr 2013 09:21:43 +0200
 Subject: [PATCH] Do not store SID string in a local buffer

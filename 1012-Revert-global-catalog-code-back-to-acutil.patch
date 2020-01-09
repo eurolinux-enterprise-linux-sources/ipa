@@ -1,4 +1,4 @@
-From 865dc357c91dfdeb22ae0d3e6b01e3bc55314030 Mon Sep 17 00:00:00 2001
+From fe394709e13e8ab190d246a233f54c46929a96c9 Mon Sep 17 00:00:00 2001
 From: Martin Kosek <mkosek@redhat.com>
 Date: Wed, 7 Nov 2012 09:26:56 +0100
 Subject: [PATCH] Revert global catalog code back to acutil
@@ -14,10 +14,10 @@ in RHEL.
  1 file changed, 13 insertions(+), 10 deletions(-)
 
 diff --git a/ipaserver/dcerpc.py b/ipaserver/dcerpc.py
-index 4eddbcdc304de9e50c5ccb9a71808fb71cf5b844..5cd7c19ffea3cd40d1cda9016c5231bcc5825053 100644
+index 45ac615a6860775a3bc1bf206a88e4b273c60469..ba0e4762bbc14a65b8186ef50735cf533bea6133 100644
 --- a/ipaserver/dcerpc.py
 +++ b/ipaserver/dcerpc.py
-@@ -49,8 +49,7 @@ except ImportError:
+@@ -50,8 +50,7 @@ except ImportError:
  import ldap as _ldap
  from ipaserver.ipaldap import IPAdmin
  from ipalib.session import krbccache_dir, krbccache_prefix
@@ -27,7 +27,7 @@ index 4eddbcdc304de9e50c5ccb9a71808fb71cf5b844..5cd7c19ffea3cd40d1cda9016c5231bc
  
  __doc__ = _("""
  Classes to manage trust joins using DCE-RPC calls
-@@ -373,14 +372,18 @@ class DomainValidator(object):
+@@ -364,14 +363,18 @@ class DomainValidator(object):
              # Retrieve GC servers list
              gc_name = '_gc._tcp.%s.' % info['dns_domain']
  
@@ -55,5 +55,5 @@ index 4eddbcdc304de9e50c5ccb9a71808fb71cf5b844..5cd7c19ffea3cd40d1cda9016c5231bc
          info['gc'] = servers
  
 -- 
-1.7.11.7
+2.4.3
 

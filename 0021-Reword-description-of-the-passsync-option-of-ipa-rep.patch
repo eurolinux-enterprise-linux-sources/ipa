@@ -1,4 +1,4 @@
-From 343e90eff6c93de536539f0abc3fe9e516beeb2b Mon Sep 17 00:00:00 2001
+From 8a10a98d5c7c0725601bb71790429d3dfccff1e8 Mon Sep 17 00:00:00 2001
 From: Jan Cholasta <jcholast@redhat.com>
 Date: Mon, 29 Oct 2012 05:13:39 -0400
 Subject: [PATCH] Reword description of the --passsync option of
@@ -11,10 +11,10 @@ https://fedorahosted.org/freeipa/ticket/3208
  2 files changed, 6 insertions(+), 2 deletions(-)
 
 diff --git a/install/tools/ipa-replica-manage b/install/tools/ipa-replica-manage
-index d489275c2cb58e30a9b7353510d0d7bfab1de1ba..449138bdf322ae509b2586967b6650d4e780c484 100755
+index a62974a0f909cb6d45943dc42e4e446d8ee2b207..270095b8849c092ce60fa6cedccda5c0659bb5c0 100755
 --- a/install/tools/ipa-replica-manage
 +++ b/install/tools/ipa-replica-manage
-@@ -86,7 +86,7 @@ def parse_options():
+@@ -85,7 +85,7 @@ def parse_options():
      parser.add_option("--win-subtree", dest="win_subtree", default=None,
                        help="DN of Windows subtree containing the users you want to sync (default cn=Users,<domain suffix)")
      parser.add_option("--passsync", dest="passsync", default=None,
@@ -48,5 +48,5 @@ index b1704c0b47d0d227f0372c6817fd84f48a7f4d34..836743902278ec2273f3ce7a7fbf3992
  0 if the command was successful
  
 -- 
-1.7.11.7
+2.4.3
 

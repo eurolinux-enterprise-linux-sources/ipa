@@ -1,4 +1,4 @@
-From e50322645cfc1eac507ea1b44c4e99a156fb983f Mon Sep 17 00:00:00 2001
+From 08769e0fb7b1f8a19842badbfb4839f8292ad0bf Mon Sep 17 00:00:00 2001
 From: Martin Kosek <mkosek@redhat.com>
 Date: Fri, 26 Jul 2013 10:58:52 +0200
 Subject: [PATCH] Free NSS objects in --external-ca scenario

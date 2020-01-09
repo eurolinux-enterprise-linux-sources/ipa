@@ -20,7 +20,7 @@
 
 Name:           ipa
 Version:        3.0.0
-Release:        47%{?date}%{?dist}.2
+Release:        50%{?date}%{?dist}.1
 Summary:        The Identity, Policy and Audit system
 
 Group:          System Environment/Base
@@ -167,6 +167,18 @@ Patch0134:      0134-Free-NSS-objects-in-external-ca-scenario.patch
 Patch0135:      0135-Do-not-lookup-up-the-domain-too-early-if-only-the-SI.patch
 Patch0136:      0136-Do-not-store-SID-string-in-a-local-buffer.patch
 Patch0137:      0137-Allow-ID-to-SID-mappings-in-the-extdom-plugin.patch
+Patch0138:      0138-Allow-user-to-force-Kerberos-realm-during-installati.patch
+Patch0139:      0139-sysrestore-copy-files-instead-of-moving-them-to-avoi.patch
+Patch0140:      0140-webui-add-Kerberos-configuration-instructions-for-Ch.patch
+Patch0141:      0141-Remove-ico-files-from-Makefile.patch
+Patch0142:      0142-ACI-plugin-correctly-parse-bind-rules-enclosed-in-pa.patch
+Patch0143:      0143-Simplify-adding-options-in-ipachangeconf.patch
+Patch0144:      0144-Remove-50-lockout-policy.update-file.patch
+Patch0145:      0145-ipachangeconf-Add-ability-to-preserve-section-case.patch
+Patch0146:      0146-ipa-client-automount-Leverage-IPAChangeConf-to-confi.patch
+Patch0147:      0147-Skip-time-sync-during-client-install-when-using-no-n.patch
+Patch0148:      0148-add-DS-index-for-userCertificate-attribute.patch
+Patch0149:      0149-webui-use-manual-Firefox-configuration-for-Firefox-4.patch
 
 Patch1001:      1001-hide-pkinit.patch
 Patch1002:      1002-remove-pkinit.patch
@@ -186,6 +198,8 @@ Patch1015:      1015-Return-proper-error-if-autodiscovery-fails-on-AD-ser.patch
 Patch1016:      1016-webui-fix-XSS-vulnerability-in-dialog-header.patch
 Patch1017:      1017-ipa-client-install-adds-extra-sss-to-sudoers-in-nssw.patch
 Patch1018:      1018-Properly-check-SANs-in-CSRs-generated-by-certmonger.patch
+Patch1019:      1019-WebUI-fix-ipa_error.css.patch
+Patch1020:      1020-webui-fix-browser-detection-in-browserconfig.html-an.patch
 
 Patch1030:      1030-ipaserver-dcerpc-Ensure-LSA-pipe-has-session-key-bef.patch
 Patch1031:      1031-Support-Samba-PASSDB-0.2.0-aka-interface-version-24.patch
@@ -664,7 +678,7 @@ if [ $1 -gt 1 ] ; then
         if ! egrep -q '/var/lib/sss/pubconf/krb5.include.d/' /etc/krb5.conf  2>/dev/null ; then
             echo "includedir /var/lib/sss/pubconf/krb5.include.d/" > /etc/krb5.conf.ipanew
             cat /etc/krb5.conf >> /etc/krb5.conf.ipanew
-            mv /etc/krb5.conf.ipanew /etc/krb5.conf
+            mv -Z /etc/krb5.conf.ipanew /etc/krb5.conf
             /sbin/restorecon /etc/krb5.conf
         fi
     fi
@@ -871,20 +885,61 @@ fi
 %ghost %attr(0644,root,apache) %config(noreplace) %{_sysconfdir}/ipa/ca.crt
 
 %changelog
-* Wed Apr 06 2016 Alexander Bokovoy <abokovoy@redhat.com> - 3.0.0-47.el6.2
+* Tue Apr 12 2016 Alexander Bokovoy <abokovoy@redhat.com> - 3.0.0-50.el6.1
 - Update IPA code to support Samba 4.2
-- Related: #1322688
+- Related: #1322689
 
-* Thu Nov 12 2015 Jan Cholasta <jcholast@redhat.com> - 3.0.0-47.el6.1
-- Resolves: #1280207 Unable to resolve group memberships for AD users when
+* Thu Jan  7 2016 Jan Cholasta <mbasti@redhat.com> - 3.0.0-50.el6
+- Resolves: #1225868 display browser config options that apply to the browser -
+  Chrome
+  - Remove ico files from Makefile
+- Resolves: #1232843 ipa-client-install errors out if client and server time
+  are not in sync or unreachable
+  - Skip time sync during client install when using --no-ntp
+- Resolves: #1288495 Add userCertificate index used in Smart Card
+  authentication
+  - add DS index for userCertificate attribute
+- Resolves: #1293588 JavaScript error in ssbrowser.html - TypeError: Cannot
+  read property 'mozilla' of undefined
+  - webui: fix browser detection in browserconfig.html and ssbrowser.html
+- Resolves: #1296124 Adjust Firefox configuration to new extension signing
+  policy
+  - webui: use manual Firefox configuration for Firefox >= 40
+- Remove binary patching from patch 0140
+
+* Tue Dec 22 2015 Martin Basti <mbasti@redhat.com> - 3.0.0-49.el6
+- Resolves: #1127211 ipa-server-install --uninstall produces avc
+  - sysrestore: copy files instead of moving them to avoind SELinux issues
+  - Use 'mv -Z' in specfile to restore SELinux context
+- Resolves: #1222999 ipa aci plugin is not parsing aci's correctly.
+  - ACI plugin: correctly parse bind rules enclosed in parentheses
+- Resolves: #1225868 display browser config options that apply to the browser -
+  Chrome
+  - webui: add Kerberos configuration instructions for Chrome
+  - Remove ico files from Makefile
+  - WebUI: fix ipa_error.css
+- Resolves: #1232468 The Domain option is not correctly set in idmapd.conf when
+  ipa-client-automount is executed.
+  - Simplify adding options in ipachangeconf
+  - ipachangeconf: Add ability to preserve section case
+  - ipa-client-automount: Leverage IPAChangeConf to configure the domain for
+    idmapd
+- Resolves: #1232899 ipa-client-install does not respect --realm option
+  - Allow user to force Kerberos realm during installation.
+- Resolves: #1276358 Remove /usr/share/ipa/updates/50-lockout-policy.update
+  file from IPA 3.0 releases
+  - Remove 50-lockout-policy.update file
+
+* Thu Nov 12 2015 Jan Cholasta <jcholast@redhat.com> - 3.0.0-48.el6
+- Resolves: #1263703 ipa-server-install with externally signed CA fails with
+  NSS error (SEC_ERROR_BUSY)
+  - Free NSS objects in --external-ca scenario
+- Resolves: #1263262 Unable to resolve group memberships for AD users when
   using sssd-1.12.2-58.el7_1.6.x86_64 client in combination with
   ipa-server-3.0.0-42.el6.x86_64 with AD Trust
   - Do not lookup up the domain too early if only the SID is known
   - Do not store SID string in a local buffer
   - Allow ID-to-SID mappings in the extdom plugin
-- Resolves: #1280208 ipa-server-install with externally signed CA fails with
-  NSS error (SEC_ERROR_BUSY)
-  - Free NSS objects in --external-ca scenario
 
 * Wed May 13 2015 Petr Vobornik <pvoborni@redhat.com> - 3.0.0-47.el6
 - Resolves: #1220788 - Some IPA schema files are not RFC 4512 compliant

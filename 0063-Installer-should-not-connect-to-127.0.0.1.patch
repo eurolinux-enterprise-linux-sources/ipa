@@ -1,4 +1,4 @@
-From af5689dad290d7b7666652dcaa3a8fa167029975 Mon Sep 17 00:00:00 2001
+From 2a97958482f0acb9753828b9ca1ae124f781bd65 Mon Sep 17 00:00:00 2001
 From: Martin Kosek <mkosek@redhat.com>
 Date: Wed, 16 Jan 2013 10:05:43 +0100
 Subject: [PATCH] Installer should not connect to 127.0.0.1
@@ -19,10 +19,10 @@ https://fedorahosted.org/freeipa/ticket/3355
  2 files changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/ipaserver/install/cainstance.py b/ipaserver/install/cainstance.py
-index 72f048d0d81bf2e4c61974f843aaf226318f36e4..2035a158731a5e1bceca52928db0d81f0528a9fb 100644
+index 8085983b1f2d1d9732d820aa47fa53a91707c713..1e629eab18b5738c9af78c350e7a331b6738193b 100644
 --- a/ipaserver/install/cainstance.py
 +++ b/ipaserver/install/cainstance.py
-@@ -362,7 +362,7 @@ class CADSInstance(service.Service):
+@@ -361,7 +361,7 @@ class CADSInstance(service.Service):
          dsdb.create_pin_file()
  
      def enable_ssl(self):
@@ -32,10 +32,10 @@ index 72f048d0d81bf2e4c61974f843aaf226318f36e4..2035a158731a5e1bceca52928db0d81f
  
          mod = [(ldap.MOD_REPLACE, "nsSSLClientAuth", "allowed"),
 diff --git a/ipaserver/install/dsinstance.py b/ipaserver/install/dsinstance.py
-index b48e7d7681b585a3f348cfe08b35ea8f723c0485..b8a9c423aba2acdb2b5d41163b1d63ebaf483a7b 100644
+index 7550f73e7d859a7c491c4d1ee63297b13013ae5c..d389b1c40c26b2cc9bf59efb69935a0c4a63ee42 100644
 --- a/ipaserver/install/dsinstance.py
 +++ b/ipaserver/install/dsinstance.py
-@@ -460,7 +460,7 @@ class DsInstance(service.Service):
+@@ -462,7 +462,7 @@ class DsInstance(service.Service):
          dn = DN(('cn', 'IPA install %s' % self.sub_dict["TIME"]), ('cn', 'memberof task'),
                  ('cn', 'tasks'), ('cn', 'config'))
          root_logger.debug("Waiting for memberof task to complete.")
@@ -44,7 +44,7 @@ index b48e7d7681b585a3f348cfe08b35ea8f723c0485..b8a9c423aba2acdb2b5d41163b1d63eb
          if self.dm_password:
              conn.simple_bind_s(DN(('cn', 'directory manager')), self.dm_password)
          else:
-@@ -558,7 +558,7 @@ class DsInstance(service.Service):
+@@ -560,7 +560,7 @@ class DsInstance(service.Service):
                  dsdb.track_server_cert("Server-Cert", self.principal, dsdb.passwd_fname, 'restart_dirsrv %s' % self.serverid)
                  dsdb.create_pin_file()
  
@@ -54,5 +54,5 @@ index b48e7d7681b585a3f348cfe08b35ea8f723c0485..b8a9c423aba2acdb2b5d41163b1d63eb
  
          mod = [(ldap.MOD_REPLACE, "nsSSLClientAuth", "allowed"),
 -- 
-1.7.11.7
+2.4.3
 

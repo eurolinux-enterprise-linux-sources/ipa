@@ -1,8 +1,8 @@
-From f57111b70b57c830a9cbcac33cfa2798b77058cd Mon Sep 17 00:00:00 2001
+From 42254a104f0165a44b1e59985c06d3af6bea8c72 Mon Sep 17 00:00:00 2001
 From: Jason Woods <devel@jasonwoods.me.uk>
 Date: Fri, 7 Mar 2014 16:38:24 +0000
-Subject: [PATCH 123/123] ipa-sam: cache gid to sid and uid to sid requests in
- idmap cache
+Subject: [PATCH] ipa-sam: cache gid to sid and uid to sid requests in idmap
+ cache
 
 Add idmap_cache calls to ipa-sam to prevent huge numbers of LDAP calls to the
 directory service for gid/uid<->sid resolution.
@@ -148,10 +148,10 @@ index eeb7829d79c65d750d602a8bb764e865041657bd..3fe5a73813543754d50c18f0e9c8b6ea
 +				   "(&(uidNumber=%u)"
 +				     "(objectClass=%s)"
 +				     "(objectClass=%s)))",
++				 (unsigned int)gid,
++				 LDAP_OBJ_GROUPMAP,
  				 (unsigned int)gid,
 -				 LDAP_OBJ_GROUPMAP);
-+				 LDAP_OBJ_GROUPMAP,
-+				 (unsigned int)gid,
 +				 LDAP_OBJ_POSIXACCOUNT,
 +				 LDAP_OBJ_SAMBASAMACCOUNT);
  	if (filter == NULL) {
@@ -299,5 +299,5 @@ index eeb7829d79c65d750d602a8bb764e865041657bd..3fe5a73813543754d50c18f0e9c8b6ea
  		*_group_sid = talloc_steal(mem_ctx, group_sid);
  	}
 -- 
-1.9.3
+2.4.3
 

@@ -1,4 +1,4 @@
-From 84758feda38d19471df6a4c58b614f01a5ac4abd Mon Sep 17 00:00:00 2001
+From 084e893ea10d594a767dfc51dfa317482cd2867b Mon Sep 17 00:00:00 2001
 From: Sumit Bose <sbose@redhat.com>
 Date: Wed, 24 Apr 2013 14:44:54 +0200
 Subject: [PATCH] Do not lookup up the domain too early if only the SID is

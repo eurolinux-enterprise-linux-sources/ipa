@@ -1,4 +1,4 @@
-From f84bc9ff9e466a016c3fe143f11390d0f612efd6 Mon Sep 17 00:00:00 2001
+From 2ea1289bbe938bc9a0ce65a133473c7bc4139c33 Mon Sep 17 00:00:00 2001
 From: Petr Vobornik <pvoborni@redhat.com>
 Date: Fri, 27 Feb 2015 10:18:34 +0100
 Subject: [PATCH] Do not allow installation in FIPS mode
@@ -28,7 +28,7 @@ index f7cf023bbccd512e109d63cd0a3d77246a48d308..81c964b783ad0c994ea708744b394c95
      root_logger.debug('%s was invoked with argument "%s" and options: %s' % (sys.argv[0], filename, safe_options))
  
 diff --git a/install/tools/ipa-server-install b/install/tools/ipa-server-install
-index 7180a214cc02dbd959cd9714030b008a19afb11c..7fed3c0f4292a4d87784811d367a138e10ad94b5 100755
+index 28ed9dbd7e3fa5bc28f3ebf694f34dbff8b4b90e..04e3cee63bf5fd9fb68ff86fcc5130b0061b1457 100755
 --- a/install/tools/ipa-server-install
 +++ b/install/tools/ipa-server-install
 @@ -563,6 +563,11 @@ def main():
@@ -61,10 +61,10 @@ index d4b2c0878f2b62fd12198f76bef01ef70e9f3de1..e22cb2e0c102b676ba1c8cad69e6808d
      try:
          check_IPA_configuration()
 diff --git a/ipa-client/ipa-install/ipa-client-install b/ipa-client/ipa-install/ipa-client-install
-index 819e4eb55d8f6c8aade9e50e4b3b015ab6ccac3a..21592b436ee8aab0bc1fcf1a12627671f8cba290 100755
+index e5f414f0577984bd5186a1f133a464c1bd3fd360..21e3b84ac78929dea2fa3af57829f79b5c608e8c 100755
 --- a/ipa-client/ipa-install/ipa-client-install
 +++ b/ipa-client/ipa-install/ipa-client-install
-@@ -2485,6 +2485,10 @@ def main():
+@@ -2516,6 +2516,10 @@ def main():
  
      if not os.getegid() == 0:
          sys.exit("\nYou must be root to run ipa-client-install.\n")
@@ -76,5 +76,5 @@ index 819e4eb55d8f6c8aade9e50e4b3b015ab6ccac3a..21592b436ee8aab0bc1fcf1a12627671
      logging_setup(options)
      root_logger.debug(
 -- 
-2.1.0
+2.4.3
 

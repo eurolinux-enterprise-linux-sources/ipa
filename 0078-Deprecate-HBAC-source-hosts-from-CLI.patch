@@ -1,7 +1,7 @@
-From a0f4bd465e2b8614bbe5b2b77157c6a94a6cf04b Mon Sep 17 00:00:00 2001
+From a1d94b9a6f64a4d34db58d1f1bca394c8229cd23 Mon Sep 17 00:00:00 2001
 From: Ana Krivokapic <akrivoka@redhat.com>
 Date: Fri, 2 Aug 2013 10:35:20 +0200
-Subject: [PATCH 78/98] Deprecate HBAC source hosts from CLI
+Subject: [PATCH] Deprecate HBAC source hosts from CLI
 
 Hide the commands and options listed below from the CLI,
 but keep them in the API. When called directly from the API,
@@ -29,7 +29,7 @@ diff --git a/API.txt b/API.txt
 index e33445c25b62347b33d7c5695e9fd27f1048ea69..69219f9a2d332e8c644ad42caf830e9b994d5edb 100644
 --- a/API.txt
 +++ b/API.txt
-@@ -1327,15 +1327,17 @@ command: group_show
+@@ -1327,15 +1327,17 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Entry('result', <type 'dict'>, Gettext('A dictionary representing an LDAP entry', domain='ipa', localedir=None))
  output: Output('value', <type 'unicode'>, None)
  command: hbacrule_add
@@ -49,7 +49,7 @@ index e33445c25b62347b33d7c5695e9fd27f1048ea69..69219f9a2d332e8c644ad42caf830e9b
  option: Str('externalhost', attribute=True, cli_name='externalhost', multivalue=True, required=False)
  option: Str('setattr*', cli_name='setattr', exclude='webui')
  option: Str('addattr*', cli_name='addattr', exclude='webui')
-@@ -1409,16 +1411,18 @@ command: hbacrule_enable
+@@ -1409,16 +1411,18 @@ output: Output('summary', (<type 'unicode'>, <type 'NoneType'>), None)
  output: Output('result', <type 'bool'>, None)
  output: Output('value', <type 'unicode'>, None)
  command: hbacrule_find
@@ -70,7 +70,7 @@ index e33445c25b62347b33d7c5695e9fd27f1048ea69..69219f9a2d332e8c644ad42caf830e9b
  option: Str('externalhost', attribute=True, autofill=False, cli_name='externalhost', multivalue=True, query=True, required=False)
  option: Int('timelimit?', autofill=False, minvalue=0)
  option: Int('sizelimit?', autofill=False, minvalue=0)
-@@ -1431,15 +1435,17 @@ command: hbacrule_find
+@@ -1431,15 +1435,17 @@ output: ListOfEntries('result', (<type 'list'>, <type 'tuple'>), Gettext('A list
  output: Output('count', <type 'int'>, None)
  output: Output('truncated', <type 'bool'>, None)
  command: hbacrule_mod
@@ -90,7 +90,7 @@ index e33445c25b62347b33d7c5695e9fd27f1048ea69..69219f9a2d332e8c644ad42caf830e9b
  option: Str('externalhost', attribute=True, autofill=False, cli_name='externalhost', multivalue=True, required=False)
  option: Str('setattr*', cli_name='setattr', exclude='webui')
  option: Str('addattr*', cli_name='addattr', exclude='webui')
-@@ -1644,7 +1650,7 @@ command: hbacsvcgroup_show
+@@ -1644,7 +1650,7 @@ output: Output('value', <type 'unicode'>, None)
  command: hbactest
  args: 0,9,6
  option: Str('user', cli_name='user', primary_key=True)
@@ -113,7 +113,7 @@ diff --git a/ipalib/__init__.py b/ipalib/__init__.py
 index 8bf37f048805fa8cb22c787174524e31832013d1..c571f0758c0effc383ccb3cf4af69b78219c1723 100644
 --- a/ipalib/__init__.py
 +++ b/ipalib/__init__.py
-@@ -878,7 +878,7 @@ class my_command(Command):
+@@ -878,7 +878,7 @@ from backend import Backend
  from frontend import Command, LocalOrRemote, Updater
  from frontend import Object, Method, Property
  from crud import Create, Retrieve, Update, Delete, Search
@@ -152,7 +152,7 @@ diff --git a/ipalib/parameters.py b/ipalib/parameters.py
 index b3a75f288f895449cfa460c4c1512853248c8cd9..cfa3d1adaa3705a75e5ba714ce52d8f646889830 100644
 --- a/ipalib/parameters.py
 +++ b/ipalib/parameters.py
-@@ -1866,6 +1866,23 @@ def _convert_scalar(self, value, index=None):
+@@ -1866,6 +1866,23 @@ class DNParam(Param):
                                    error=ugettext(e))
          return dn
  
@@ -229,7 +229,7 @@ index 0b1e8b83cd436fe6eaecafeefc37882c0f859be3..7a29cc0da500f73f3d2bd866a51f8fa5
          Str('memberservice_hbacsvc?',
              label=_('Services'),
              flags=['no_create', 'no_update', 'no_search'],
-@@ -272,8 +261,6 @@ def pre_callback(self, ldap, dn, entry_attrs, attrs_list, *keys, **options):
+@@ -272,8 +261,6 @@ class hbacrule_mod(LDAPUpdate):
              raise errors.MutuallyExclusiveError(reason=_("user category cannot be set to 'all' while there are allowed users"))
          if is_all(options, 'hostcategory') and 'memberhost' in entry_attrs:
              raise errors.MutuallyExclusiveError(reason=_("host category cannot be set to 'all' while there are allowed hosts"))
@@ -238,7 +238,7 @@ index 0b1e8b83cd436fe6eaecafeefc37882c0f859be3..7a29cc0da500f73f3d2bd866a51f8fa5
          if is_all(options, 'servicecategory') and 'memberservice' in entry_attrs:
              raise errors.MutuallyExclusiveError(reason=_("service category cannot be set to 'all' while there are allowed services"))
          return dn
-@@ -493,39 +480,25 @@ class hbacrule_remove_host(LDAPRemoveMember):
+@@ -493,39 +480,25 @@ api.register(hbacrule_remove_host)
  
  
  class hbacrule_add_sourcehost(LDAPAddMember):
@@ -309,7 +309,7 @@ index 78fac0241de2ed6b7416029c692ee4bc53327b34..4e4a3c76187aee1b3d978485d175ea1d
          Str('targethost',
              cli_name='host',
              label=_('Target host'),
-@@ -230,7 +227,7 @@ def canonicalize(self, host):
+@@ -230,7 +227,7 @@ class hbactest(Command):
      def execute(self, *args, **options):
          # First receive all needed information:
          # 1. HBAC rules (whether enabled or disabled)
@@ -318,7 +318,7 @@ index 78fac0241de2ed6b7416029c692ee4bc53327b34..4e4a3c76187aee1b3d978485d175ea1d
          # 3. Options: rules to test (--rules, --enabled, --disabled), request for detail output
          rules = []
  
-@@ -317,21 +314,6 @@ def execute(self, *args, **options):
+@@ -317,21 +314,6 @@ class hbactest(Command):
              except:
                  pass
  
@@ -340,7 +340,7 @@ index 78fac0241de2ed6b7416029c692ee4bc53327b34..4e4a3c76187aee1b3d978485d175ea1d
          if options['targethost'] != u'all':
              try:
                  request.targethost.name = self.canonicalize(options['targethost'])
-@@ -358,8 +340,6 @@ def execute(self, *args, **options):
+@@ -358,8 +340,6 @@ class hbactest(Command):
                          matched_rules.append(ipa_rule.name)
                      if res == pyhbac.HBAC_EVAL_DENY:
                          notmatched_rules.append(ipa_rule.name)
@@ -362,7 +362,7 @@ index 22c9b74e9805a54d801f1b5842c51896d5d377b7..c0f8b530776decaf2f7503ea5cb269e5
      test_service = u'sshd'
      test_host_external = u'notfound.example.com'
  
-@@ -150,12 +148,6 @@ def test_7_hbacrule_init_testing_data(self):
+@@ -150,12 +148,6 @@ class test_hbac(XMLRPC_test):
          self.failsafe_add(api.Object.hostgroup,
              self.test_hostgroup, description=u'description'
          )
@@ -375,7 +375,7 @@ index 22c9b74e9805a54d801f1b5842c51896d5d377b7..c0f8b530776decaf2f7503ea5cb269e5
          self.failsafe_add(api.Object.hbacsvc,
              self.test_service, description=u'desc',
          )
-@@ -268,34 +260,14 @@ def test_b_hbacrule_remove_host(self):
+@@ -268,34 +260,14 @@ class test_hbac(XMLRPC_test):
          assert 'memberhost_host' not in entry
          assert 'memberhost_hostgroup' not in entry
  
@@ -413,7 +413,7 @@ index 22c9b74e9805a54d801f1b5842c51896d5d377b7..c0f8b530776decaf2f7503ea5cb269e5
  
      def test_a_hbacrule_add_service(self):
          """
-@@ -327,55 +299,14 @@ def test_a_hbacrule_remove_service(self):
+@@ -327,55 +299,14 @@ class test_hbac(XMLRPC_test):
          entry = ret['result']
          assert 'memberservice service' not in entry
  
@@ -472,7 +472,7 @@ index 22c9b74e9805a54d801f1b5842c51896d5d377b7..c0f8b530776decaf2f7503ea5cb269e5
  
      @raises(errors.ValidationError)
      def test_c_hbacrule_mod_invalid_external_setattr(self):
-@@ -386,40 +317,6 @@ def test_c_hbacrule_mod_invalid_external_setattr(self):
+@@ -386,40 +317,6 @@ class test_hbac(XMLRPC_test):
              self.rule_name, setattr=self.test_invalid_sourcehost
          )
  
@@ -513,7 +513,7 @@ index 22c9b74e9805a54d801f1b5842c51896d5d377b7..c0f8b530776decaf2f7503ea5cb269e5
      def test_d_hbacrule_disable(self):
          """
          Test disabling HBAC rule using `xmlrpc.hbacrule_disable`.
-@@ -551,17 +448,12 @@ def test_n_hbacrule_links(self):
+@@ -551,17 +448,12 @@ class test_hbac(XMLRPC_test):
          """
          Test adding various links to HBAC rule
          """
@@ -531,7 +531,7 @@ index 22c9b74e9805a54d801f1b5842c51896d5d377b7..c0f8b530776decaf2f7503ea5cb269e5
          assert_attr_equal(entry, 'memberservice_hbacsvc', self.test_service)
  
      def test_y_hbacrule_zap_testing_data(self):
-@@ -574,8 +466,6 @@ def test_y_hbacrule_zap_testing_data(self):
+@@ -574,8 +466,6 @@ class test_hbac(XMLRPC_test):
          api.Command['group_del'](self.test_group)
          api.Command['host_del'](self.test_host)
          api.Command['hostgroup_del'](self.test_hostgroup)
@@ -540,7 +540,7 @@ index 22c9b74e9805a54d801f1b5842c51896d5d377b7..c0f8b530776decaf2f7503ea5cb269e5
          api.Command['hbacsvc_del'](self.test_service)
  
      def test_k_2_sudorule_referential_integrity(self):
-@@ -596,3 +486,12 @@ def test_z_hbacrule_del(self):
+@@ -596,3 +486,12 @@ class test_hbac(XMLRPC_test):
          # verify that it's gone
          with assert_raises(errors.NotFound):
              api.Command['hbacrule_show'](self.rule_name)
@@ -557,7 +557,7 @@ diff --git a/tests/test_xmlrpc/test_hbactest_plugin.py b/tests/test_xmlrpc/test_
 index bc12e8974dc4591afa3b4a5f9e68df9ed32e2231..520f202476a00e60c21ce7a3bf4b5ace3b96fbc4 100644
 --- a/tests/test_xmlrpc/test_hbactest_plugin.py
 +++ b/tests/test_xmlrpc/test_hbactest_plugin.py
-@@ -25,6 +25,7 @@
+@@ -25,6 +25,7 @@ from xmlrpc_test import XMLRPC_test, assert_attr_equal
  from ipalib import api
  from ipalib import errors
  from types import NoneType
@@ -565,7 +565,7 @@ index bc12e8974dc4591afa3b4a5f9e68df9ed32e2231..520f202476a00e60c21ce7a3bf4b5ace
  
  # Test strategy:
  # 1. Create few allow rules: with user categories, with explicit users, with user groups, with groups, with services
-@@ -95,10 +96,6 @@ def test_0_hbactest_addrules(self):
+@@ -95,10 +96,6 @@ class test_hbactest(XMLRPC_test):
                  self.rule_names[i], host=self.test_host, hostgroup=self.test_hostgroup
              )
  
@@ -576,7 +576,7 @@ index bc12e8974dc4591afa3b4a5f9e68df9ed32e2231..520f202476a00e60c21ce7a3bf4b5ace
              ret = api.Command['hbacrule_add_service'](
                  self.rule_names[i], hbacsvc=self.test_service
              )
-@@ -112,20 +109,6 @@ def test_a_hbactest_check_rules_detail(self):
+@@ -112,20 +109,6 @@ class test_hbactest(XMLRPC_test):
          """
          ret = api.Command['hbactest'](
              user=self.test_user,
@@ -597,7 +597,7 @@ index bc12e8974dc4591afa3b4a5f9e68df9ed32e2231..520f202476a00e60c21ce7a3bf4b5ace
              targethost=self.test_host,
              service=self.test_service,
              rules=self.rule_names
-@@ -141,21 +124,6 @@ def test_b_hbactest_check_rules_nodetail(self):
+@@ -141,21 +124,6 @@ class test_hbactest(XMLRPC_test):
          """
          ret = api.Command['hbactest'](
              user=self.test_user,
@@ -619,7 +619,7 @@ index bc12e8974dc4591afa3b4a5f9e68df9ed32e2231..520f202476a00e60c21ce7a3bf4b5ace
              targethost=self.test_host,
              service=self.test_service,
              rules=self.rule_names,
-@@ -172,7 +140,6 @@ def test_c_hbactest_check_rules_enabled_detail(self):
+@@ -172,7 +140,6 @@ class test_hbactest(XMLRPC_test):
          """
          ret = api.Command['hbactest'](
              user=self.test_user,
@@ -627,7 +627,7 @@ index bc12e8974dc4591afa3b4a5f9e68df9ed32e2231..520f202476a00e60c21ce7a3bf4b5ace
              targethost=self.test_host,
              service=self.test_service,
              enabled=True
-@@ -182,17 +149,6 @@ def test_c_hbactest_check_rules_enabled_detail(self):
+@@ -182,17 +149,6 @@ class test_hbactest(XMLRPC_test):
          # Thus, check that our two enabled rules are in matched, nothing more
          for i in [0,2]:
              assert self.rule_names[i] in ret['matched']
@@ -645,7 +645,7 @@ index bc12e8974dc4591afa3b4a5f9e68df9ed32e2231..520f202476a00e60c21ce7a3bf4b5ace
  
      def test_d_hbactest_check_rules_disabled_detail(self):
          """
-@@ -200,7 +156,6 @@ def test_d_hbactest_check_rules_disabled_detail(self):
+@@ -200,7 +156,6 @@ class test_hbactest(XMLRPC_test):
          """
          ret = api.Command['hbactest'](
              user=self.test_user,
@@ -653,7 +653,7 @@ index bc12e8974dc4591afa3b4a5f9e68df9ed32e2231..520f202476a00e60c21ce7a3bf4b5ace
              targethost=self.test_host,
              service=self.test_service,
              disabled=True
-@@ -210,17 +165,6 @@ def test_d_hbactest_check_rules_disabled_detail(self):
+@@ -210,17 +165,6 @@ class test_hbactest(XMLRPC_test):
          # Thus, check that our two disabled rules are in matched, nothing more
          for i in [1,3]:
              assert self.rule_names[i] in ret['matched']
@@ -671,7 +671,7 @@ index bc12e8974dc4591afa3b4a5f9e68df9ed32e2231..520f202476a00e60c21ce7a3bf4b5ace
  
      def test_e_hbactest_check_non_existing_rule_detail(self):
          """
-@@ -228,7 +172,6 @@ def test_e_hbactest_check_non_existing_rule_detail(self):
+@@ -228,7 +172,6 @@ class test_hbactest(XMLRPC_test):
          """
          ret = api.Command['hbactest'](
              user=self.test_user,
@@ -679,7 +679,7 @@ index bc12e8974dc4591afa3b4a5f9e68df9ed32e2231..520f202476a00e60c21ce7a3bf4b5ace
              targethost=self.test_host,
              service=self.test_service,
              rules=[u'%s_1x1' % (rule) for rule in self.rule_names],
-@@ -241,30 +184,27 @@ def test_e_hbactest_check_non_existing_rule_detail(self):
+@@ -241,30 +184,27 @@ class test_hbactest(XMLRPC_test):
          for rule in self.rule_names:
              assert u'%s_1x1' % (rule) in ret['error']
  
@@ -720,5 +720,5 @@ index bc12e8974dc4591afa3b4a5f9e68df9ed32e2231..520f202476a00e60c21ce7a3bf4b5ace
  
          api.Command['user_del'](self.test_user)
 -- 
-1.8.3.1
+2.4.3
 

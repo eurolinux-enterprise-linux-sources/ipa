@@ -1,7 +1,7 @@
-From 16afd19cbc4e7e60454c75f3d7fe2a1ce59e3e09 Mon Sep 17 00:00:00 2001
+From 96b24e52a89ccbdcaf97c10af3968c5164b7b667 Mon Sep 17 00:00:00 2001
 From: Petr Vobornik <pvoborni@redhat.com>
 Date: Wed, 4 Mar 2015 13:58:26 +0100
-Subject: [PATCH] [PATCH] Add TLS 1.2 to the protocol list in mod_nss config
+Subject: [PATCH] Add TLS 1.2 to the protocol list in mod_nss config
 
 https://fedorahosted.org/freeipa/ticket/4653
 
@@ -43,19 +43,19 @@ index 761724e9a9c284dbb7211bb14766b618e842e1f3..18a74c730e1802b833afad6ad20c9f31
      memcache = memcacheinstance.MemcacheInstance()
      memcache.ldapi = True
 diff --git a/ipaserver/install/httpinstance.py b/ipaserver/install/httpinstance.py
-index dda25b3c4bbeab8a6c03c2e35423b5ae23e930e1..76e707ad3e628feb2e2f758065658aad560dc415 100644
+index 5c35b5cd2728a56e7c81315392b758f69c1375ae..925ce5845f6982230b45a3e47b955f903028e43a 100644
 --- a/ipaserver/install/httpinstance.py
 +++ b/ipaserver/install/httpinstance.py
-@@ -105,6 +105,8 @@ class HTTPInstance(service.Service):
+@@ -85,6 +85,8 @@ class HTTPInstance(service.Service):
  
- 
+         self.step("disabling mod_ssl in httpd", self.__disable_mod_ssl)
          self.step("setting mod_nss port to 443", self.__set_mod_nss_port)
 +        self.step("setting mod_nss protocol list to TLSv1.0 - TLSv1.2",
 +                  self.set_mod_nss_protocol)
          self.step("setting mod_nss password file", self.__set_mod_nss_passwordfile)
          self.step("enabling mod_nss renegotiate", self.enable_mod_nss_renegotiate)
          self.step("adding URL rewriting rules", self.__add_include)
-@@ -234,6 +236,9 @@ class HTTPInstance(service.Service):
+@@ -219,6 +221,9 @@ class HTTPInstance(service.Service):
      def __set_mod_nss_nickname(self, nickname):
          installutils.set_directive(NSS_CONF, 'NSSNickname', nickname)
  
@@ -66,5 +66,5 @@ index dda25b3c4bbeab8a6c03c2e35423b5ae23e930e1..76e707ad3e628feb2e2f758065658aad
          installutils.set_directive(NSS_CONF, 'NSSRenegotiation', 'on', False)
          installutils.set_directive(NSS_CONF, 'NSSRequireSafeNegotiation', 'on', False)
 -- 
-2.1.0
+2.4.3
 

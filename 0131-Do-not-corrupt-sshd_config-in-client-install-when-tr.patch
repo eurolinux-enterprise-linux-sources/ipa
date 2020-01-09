@@ -1,4 +1,4 @@
-From 9cc17354fce7036b30d1d95a027143b3bc8b9270 Mon Sep 17 00:00:00 2001
+From c3ac6314d97a8c9a6efcdc8070973eee8b806db2 Mon Sep 17 00:00:00 2001
 From: Jan Cholasta <jcholast@redhat.com>
 Date: Wed, 18 Jun 2014 15:26:17 +0200
 Subject: [PATCH] Do not corrupt sshd_config in client install when trailing
@@ -10,10 +10,10 @@ https://fedorahosted.org/freeipa/ticket/4373
  1 file changed, 17 insertions(+), 25 deletions(-)
 
 diff --git a/ipa-client/ipa-install/ipa-client-install b/ipa-client/ipa-install/ipa-client-install
-index e1f4af9f4c3ff0af4cf79ec794fe5fc6df47136e..a73a26c166883a4301e4d53518cd4ea27fd6df16 100755
+index c5b23f8a7b436b18fe7957b4af5405c3c9dddb03..e5f414f0577984bd5186a1f133a464c1bd3fd360 100755
 --- a/ipa-client/ipa-install/ipa-client-install
 +++ b/ipa-client/ipa-install/ipa-client-install
-@@ -1207,7 +1207,7 @@ def configure_sssd_conf(fstore, cli_realm, cli_domain, cli_server, options, clie
+@@ -1201,7 +1201,7 @@ def configure_sssd_conf(fstore, cli_realm, cli_domain, cli_server, options, clie
      return 0
  
  def change_ssh_config(filename, changes, sections):
@@ -22,7 +22,7 @@ index e1f4af9f4c3ff0af4cf79ec794fe5fc6df47136e..a73a26c166883a4301e4d53518cd4ea2
          return True
  
      try:
-@@ -1216,38 +1216,30 @@ def change_ssh_config(filename, changes, sections):
+@@ -1210,38 +1210,30 @@ def change_ssh_config(filename, changes, sections):
          root_logger.error("Failed to open '%s': %s", filename, str(e))
          return False
  
@@ -48,21 +48,21 @@ index e1f4af9f4c3ff0af4cf79ec794fe5fc6df47136e..a73a26c166883a4301e4d53518cd4ea2
 -                in_section = True
 -                break
 -        if in_section:
-+        option = pline.split()[0].lower()
-+        if option in section_keys:
-+            lines.append(line)
-             break
+-            break
 -        for opt in changes:
 -            if opt.lower() == option:
 -                line = None
 -                break
 -        if line is not None:
--            lines.append(line)
++        option = pline.split()[0].lower()
++        if option in section_keys:
+             lines.append(line)
 -    for opt in changes:
 -        if changes[opt] is not None:
 -            lines.append('%s %s\n' % (opt, changes[opt]))
 -    lines.append('\n')
 -    if in_section:
++            break
 +        if option in change_keys:
 +            line = '#' + line
          lines.append(line)
@@ -76,7 +76,7 @@ index e1f4af9f4c3ff0af4cf79ec794fe5fc6df47136e..a73a26c166883a4301e4d53518cd4ea2
  
      f.close()
  
-@@ -1257,7 +1249,7 @@ def change_ssh_config(filename, changes, sections):
+@@ -1251,7 +1243,7 @@ def change_ssh_config(filename, changes, sections):
          root_logger.error("Failed to open '%s': %s", filename, str(e))
          return False
  
@@ -86,5 +86,5 @@ index e1f4af9f4c3ff0af4cf79ec794fe5fc6df47136e..a73a26c166883a4301e4d53518cd4ea2
      f.close()
  
 -- 
-2.1.0
+2.4.3
 
