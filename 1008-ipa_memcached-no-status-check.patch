@@ -1,0 +1,29 @@
+From 9eda978c55c40fc0559b3bfe3c31d9080a473023 Mon Sep 17 00:00:00 2001
+From: Rob Crittenden <rcritten@redhat.com>
+Date: Thu, 30 Aug 2012 10:59:35 -0400
+Subject: [PATCH 8/8] Don't check ipa_memcached server status
+
+---
+ ipalib/session.py |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/ipalib/session.py b/ipalib/session.py
+index 87fa44825d28b33af3e9fcbbeacd5e8012659c94..c0412bee61003f9e44b8a3ac64167708a213db33 100644
+--- a/ipalib/session.py
++++ b/ipalib/session.py
+@@ -848,8 +848,10 @@ class MemcacheSessionManager(SessionManager):
+ 
+         if len(self.servers) == 0:
+             return False
+-        stats = self.get_server_statistics()
+-        return len(self.servers) == len(stats)
++
++        # Work around bug in python-memcached where we can't check on
++        # server status
++        return True
+ 
+     def new_session_id(self, max_retries=5):
+         '''
+-- 
+1.7.1
+

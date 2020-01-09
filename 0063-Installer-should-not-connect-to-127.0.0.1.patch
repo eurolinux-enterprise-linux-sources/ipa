@@ -1,0 +1,58 @@
+From af5689dad290d7b7666652dcaa3a8fa167029975 Mon Sep 17 00:00:00 2001
+From: Martin Kosek <mkosek@redhat.com>
+Date: Wed, 16 Jan 2013 10:05:43 +0100
+Subject: [PATCH] Installer should not connect to 127.0.0.1
+
+IPA installer sometimes tries to connect to the Directory Server
+via loopback address 127.0.0.1. However, the Directory Server on
+pure IPv6 systems may not be listening on this address. This address
+may not even be available.
+
+Rather use the FQDN of the server when connecting to the DS to fix
+this issue and make the connection consistent ldapmodify calls which
+also use FQDN instead of IP address.
+
+https://fedorahosted.org/freeipa/ticket/3355
+---
+ ipaserver/install/cainstance.py | 2 +-
+ ipaserver/install/dsinstance.py | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/ipaserver/install/cainstance.py b/ipaserver/install/cainstance.py
+index 72f048d0d81bf2e4c61974f843aaf226318f36e4..2035a158731a5e1bceca52928db0d81f0528a9fb 100644
+--- a/ipaserver/install/cainstance.py
++++ b/ipaserver/install/cainstance.py
+@@ -362,7 +362,7 @@ class CADSInstance(service.Service):
+         dsdb.create_pin_file()
+ 
+     def enable_ssl(self):
+-        conn = ipaldap.IPAdmin("127.0.0.1", port=DEFAULT_DSPORT)
++        conn = ipaldap.IPAdmin(self.fqdn, port=DEFAULT_DSPORT)
+         conn.simple_bind_s(DN(('cn', 'directory manager')), self.dm_password)
+ 
+         mod = [(ldap.MOD_REPLACE, "nsSSLClientAuth", "allowed"),
+diff --git a/ipaserver/install/dsinstance.py b/ipaserver/install/dsinstance.py
+index b48e7d7681b585a3f348cfe08b35ea8f723c0485..b8a9c423aba2acdb2b5d41163b1d63ebaf483a7b 100644
+--- a/ipaserver/install/dsinstance.py
++++ b/ipaserver/install/dsinstance.py
+@@ -460,7 +460,7 @@ class DsInstance(service.Service):
+         dn = DN(('cn', 'IPA install %s' % self.sub_dict["TIME"]), ('cn', 'memberof task'),
+                 ('cn', 'tasks'), ('cn', 'config'))
+         root_logger.debug("Waiting for memberof task to complete.")
+-        conn = ipaldap.IPAdmin("127.0.0.1")
++        conn = ipaldap.IPAdmin(self.fqdn)
+         if self.dm_password:
+             conn.simple_bind_s(DN(('cn', 'directory manager')), self.dm_password)
+         else:
+@@ -558,7 +558,7 @@ class DsInstance(service.Service):
+                 dsdb.track_server_cert("Server-Cert", self.principal, dsdb.passwd_fname, 'restart_dirsrv %s' % self.serverid)
+                 dsdb.create_pin_file()
+ 
+-        conn = ipaldap.IPAdmin("127.0.0.1")
++        conn = ipaldap.IPAdmin(self.fqdn)
+         conn.simple_bind_s(DN(('cn', 'directory manager')), self.dm_password)
+ 
+         mod = [(ldap.MOD_REPLACE, "nsSSLClientAuth", "allowed"),
+-- 
+1.7.11.7
+

@@ -1,0 +1,150 @@
+From e7c99eba6ec01e52a82ef87d6bef20ae13668e66 Mon Sep 17 00:00:00 2001
+From: Rob Crittenden <rcritten@redhat.com>
+Date: Thu, 30 Aug 2012 10:57:48 -0400
+Subject: [PATCH 06/10] Additional Web UI title changes
+
+https://bugzilla.redhat.com/show_bug.cgi?id=742264
+---
+ install/html/browserconfig.html |    4 ++--
+ install/html/ssbrowser.html     |    4 ++--
+ install/html/unauthorized.html  |    4 ++--
+ install/migration/error.html    |    4 ++--
+ install/migration/index.html    |    4 ++--
+ install/migration/invalid.html  |    4 ++--
+ 6 files changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/install/html/browserconfig.html b/install/html/browserconfig.html
+index 046a824..8dc93ca 100644
+--- a/install/html/browserconfig.html
++++ b/install/html/browserconfig.html
+@@ -2,7 +2,7 @@
+ <html>
+ <head>
+     <meta charset="utf-8">
+-    <title>IPA: Identity Policy Audit</title>
++    <title>Identity Management</title>
+ 
+     <link rel="stylesheet" type="text/css" href="../ui/jquery-ui.css" />
+     <link rel="stylesheet" type="text/css" href="../ui/ipa.css" />
+@@ -20,7 +20,7 @@
+     <div class="container_1">
+ 
+         <div class="header-logo">
+-            <img src="../ui/images/ipa-logo.png" /><img src="../ui/images/ipa-banner.png" />
++            <img src="../ui/images/ipa-logo.png" /><img src="../ui/images/rh-ipabanner.png" />
+         </div>
+ 
+         <div class="textblockkrb browser-config">
+diff --git a/install/html/ssbrowser.html b/install/html/ssbrowser.html
+index 9e17b5f..584a7ca 100644
+--- a/install/html/ssbrowser.html
++++ b/install/html/ssbrowser.html
+@@ -2,7 +2,7 @@
+ <html>
+ <head>
+ <meta charset="utf-8">
+-    <title>IPA: Identity Policy Audit</title>
++    <title>Identity Management</title>
+ 
+     <link rel="stylesheet" type="text/css" href="../ui/jquery-ui.css" />
+     <link rel="stylesheet" type="text/css" href="../ui/ipa.css" />
+@@ -26,7 +26,7 @@
+ 
+   <div class="container_1 ssbrowser">
+     <div class="header-logo">
+-            <img src="../ui/images/ipa-logo.png" /><img src="../ui/images/ipa-banner.png" />
++            <img src="../ui/images/ipa-logo.png" /><img src="../ui/images/rh-ipabanner.png" />
+         </div>
+        <div class="textblockkrb">
+         <h1>Browser Kerberos Setup</h1>
+diff --git a/install/html/unauthorized.html b/install/html/unauthorized.html
+index 5bff2d2..b796087 100644
+--- a/install/html/unauthorized.html
++++ b/install/html/unauthorized.html
+@@ -2,7 +2,7 @@
+ <html>
+ <head>
+     <meta charset="utf-8">
+-    <title>IPA: Identity Policy Audit</title>
++    <title>Identity Management</title>
+ 
+     <script type="text/javascript" src="../ui/jquery.js"></script>
+ 
+@@ -16,7 +16,7 @@
+     <div class="container_1">
+ 
+         <div class="header-logo">
+-            <img src="../ui/images/ipa-logo.png" /><img src="../ui/images/ipa-banner.png" />
++            <img src="../ui/images/ipa-logo.png" /><img src="../ui/images/rh-ipabanner.png" />
+         </div>
+ 
+         <div class="textblockkrb">
+diff --git a/install/migration/error.html b/install/migration/error.html
+index 9e1e3bd..80cf722 100644
+--- a/install/migration/error.html
++++ b/install/migration/error.html
+@@ -2,7 +2,7 @@
+ <html>
+ <head>
+ <meta charset="utf-8">
+-    <title>IPA: Identity Policy Audit</title>
++    <title>Identity Management</title>
+ 
+     <link rel="stylesheet" type="text/css" href="../ui/jquery-ui.css" />
+     <link rel="stylesheet" type="text/css" href="../ui/ipa.css" />
+@@ -12,7 +12,7 @@
+ 
+   <div class="container_1">
+     <div class="header-logo">
+-            <img src="../ui/images/ipa-logo.png" /><img src="../ui/images/ipa-banner.png" />
++            <img src="../ui/images/ipa-logo.png" /><img src="../ui/images/rh-ipabanner.png" />
+         </div>
+         <br>
+         <br>
+diff --git a/install/migration/index.html b/install/migration/index.html
+index eb816b3..721b0ca 100644
+--- a/install/migration/index.html
++++ b/install/migration/index.html
+@@ -2,7 +2,7 @@
+ <html>
+ <head>
+ <meta charset="utf-8">
+-    <title>IPA: Identity Policy Audit</title>
++    <title>Identity Management</title>
+ 
+     <link rel="stylesheet" type="text/css" href="../ui/jquery-ui.css" />
+     <link rel="stylesheet" type="text/css" href="../ui/ipa.css" />
+@@ -12,7 +12,7 @@
+ 
+   <div class="container_1">
+     <div class="header-logo">
+-            <img src="../ui/images/ipa-logo.png" /><img src="../ui/images/ipa-banner.png" />
++            <img src="../ui/images/ipa-logo.png" /><img src="../ui/images/rh-ipabanner.png" />
+         </div>
+        <div class="textblock">
+         <h1>Password Migration</h1>
+diff --git a/install/migration/invalid.html b/install/migration/invalid.html
+index 4f46934..376fa98 100644
+--- a/install/migration/invalid.html
++++ b/install/migration/invalid.html
+@@ -2,7 +2,7 @@
+ <html>
+ <head>
+ <meta charset="utf-8">
+-    <title>IPA: Identity Policy Audit</title>
++    <title>Identity Management</title>
+ 
+     <link rel="stylesheet" type="text/css" href="../ui/jquery-ui.css" />
+     <link rel="stylesheet" type="text/css" href="../ui/ipa.css" />
+@@ -12,7 +12,7 @@
+ 
+   <div class="container_1">
+     <div class="header-logo">
+-            <img src="../ui/images/ipa-logo.png" /><img src="../ui/images/ipa-banner.png" />
++            <img src="../ui/images/ipa-logo.png" /><img src="../ui/images/rh-ipabanner.png" />
+         </div>
+        <div class="textblock">
+         <h1>Password Migration</h1>
+-- 
+1.7.1
+

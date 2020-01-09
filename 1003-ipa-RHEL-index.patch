@@ -1,0 +1,62 @@
+From 7ac3ef3ad7801fe9336925eee1eb3555f61a1413 Mon Sep 17 00:00:00 2001
+From: Rob Crittenden <rcritten@redhat.com>
+Date: Thu, 30 Aug 2012 10:51:12 -0400
+Subject: [PATCH 3/8] Change branding to IPA and Identity Management
+
+---
+ install/tools/ipa-dns-install    |    2 +-
+ install/tools/ipa-server-install |    2 +-
+ install/ui/index.html            |    4 ++--
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/install/tools/ipa-dns-install b/install/tools/ipa-dns-install
+index d4795f72e03eed1b460a3751fc5596ac6da70900..1cedde12ca781c4419a03a0728f362ffb1ea480b 100755
+--- a/install/tools/ipa-dns-install
++++ b/install/tools/ipa-dns-install
+@@ -112,7 +112,7 @@ def main():
+     fstore = sysrestore.FileStore('/var/lib/ipa/sysrestore')
+ 
+     print "=============================================================================="
+-    print "This program will setup DNS for the FreeIPA Server."
++    print "This program will setup DNS for the IPA Server."
+     print ""
+     print "This includes:"
+     print "  * Configure DNS (bind)"
+diff --git a/install/tools/ipa-server-install b/install/tools/ipa-server-install
+index 962f0f3e3bd47fd255f2173980354744d3ba1157..e2c769719ecffb7dd45d6e39a54ea68217f70680 100755
+--- a/install/tools/ipa-server-install
++++ b/install/tools/ipa-server-install
+@@ -665,7 +665,7 @@ def main():
+             cert = certdict[certissuer]
+ 
+     print "=============================================================================="
+-    print "This program will set up the FreeIPA Server."
++    print "This program will set up the IPA Server."
+     print ""
+     print "This includes:"
+     if options.selfsign:
+diff --git a/install/ui/index.html b/install/ui/index.html
+index ab51b6d57b66158d0738697ef774f28b6efcab4a..eab9e6810eeb99850822c6df70cff8d208b75cb5 100644
+--- a/install/ui/index.html
++++ b/install/ui/index.html
+@@ -2,7 +2,7 @@
+ <html>
+ <head>
+ <meta charset="utf-8">
+-    <title>IPA: Identity Policy Audit</title>
++    <title>Identity Management</title>
+ 
+ 
+     <link rel="stylesheet" type="text/css" href="jquery-ui.css" />
+@@ -74,7 +74,7 @@
+ 
+         <div id="header">
+             <span class="header-logo">
+-                <a href="#"><img src="images/ipa-logo.png" /><img src="images/ipa-banner.png" /></a>
++                <a href="#"><img src="images/ipa-logo.png" /><img src="images/rh-ipabanner.png" /></a>
+             </span>
+             <span class="header-right">
+                 <span class="header-passwordexpires"></span>
+-- 
+1.7.1
+

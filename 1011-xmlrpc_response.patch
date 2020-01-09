@@ -1,0 +1,63 @@
+From 5016e4e1c441bcb68ffd88ab14adc36832dcacfe Mon Sep 17 00:00:00 2001
+From: Rob Crittenden <rcritten@redhat.com>
+Date: Tue, 3 Mar 2015 07:53:55 +0100
+Subject: [PATCH] Override xmlrpclib::request so we can have access to the
+ response headers.
+
+Based on the xmlrpclib::single_request function from Python 2.7.
+
+https://fedorahosted.org/freeipa/ticket/2331
+---
+ ipalib/rpc.py | 36 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 36 insertions(+)
+
+diff --git a/ipalib/rpc.py b/ipalib/rpc.py
+index 7b094f2f04d16dcedd9192eaef6c8a7aa1dad98a..a48fdc2d0afdd7712ee7660dbed596b17b1a95e0 100644
+--- a/ipalib/rpc.py
++++ b/ipalib/rpc.py
+@@ -438,6 +438,42 @@ class KerbTransport(SSLTransport):
+             # Not fatal, we just can't use the session cookie we were sent.
+             pass
+ 
++    def request(self, host, handler, request_body, verbose=0):
++        # Override the xmlrpc request object so we have more control over
++        # the response and can sift through the response headers.
++        # issue XML-RPC request
++
++        h = self.make_connection(host)
++        if verbose:
++            h.set_debuglevel(1)
++
++        try:
++            self.send_request(h, handler, request_body)
++            self.send_host(h, host)
++            self.send_user_agent(h)
++            self.send_content(h, request_body)
++
++            response = h._conn.getresponse()
++            if response.status == 200:
++                self.verbose = verbose
++                return self.parse_response(response)
++        except Fault:
++            raise
++        except Exception:
++            # All unexpected errors leave connection in
++            # a strange state, so we clear it.
++            h.close()
++            raise
++
++        #discard any response data and raise exception
++        if (response.getheader("content-length", 0)):
++            response.read()
++        raise ProtocolError(
++            host + handler,
++            response.status, response.reason,
++            response.msg,
++            )
++
+     def parse_response(self, response):
+         self.store_session_cookie(response.getheader('Set-Cookie'))
+         return SSLTransport.parse_response(self, response)
+-- 
+2.1.0
+

@@ -1,0 +1,48 @@
+From 12e1ad747effc11e71741377b29e147d4040c11e Mon Sep 17 00:00:00 2001
+From: Rob Crittenden <rcritten@redhat.com>
+Date: Tue, 6 Nov 2012 17:31:11 -0500
+Subject: [PATCH] Handle the case where there are no replicas with list-ruv
+
+This assumed that at least was returned by LDAP. This is not the case
+if no replicas have ever been created.
+
+https://fedorahosted.org/freeipa/ticket/3229
+---
+ install/tools/ipa-replica-manage | 21 +++++++++++----------
+ 1 file changed, 11 insertions(+), 10 deletions(-)
+
+diff --git a/install/tools/ipa-replica-manage b/install/tools/ipa-replica-manage
+index 449138bdf322ae509b2586967b6650d4e780c484..2422891082ac5be1521426e40772bc23e8d1dc3a 100755
+--- a/install/tools/ipa-replica-manage
++++ b/install/tools/ipa-replica-manage
+@@ -334,16 +334,17 @@ def get_ruv(realm, host, dirman_passwd):
+         sys.exit(0)
+ 
+     servers = []
+-    for ruv in entries[0][1]['nsds50ruv']:
+-        if ruv.startswith('{replicageneration'):
+-            continue
+-        data = re.match('\{replica (\d+) (ldap://.*:\d+)\}(\s+\w+\s+\w*){0,1}', ruv)
+-        if data:
+-            rid = data.group(1)
+-            (scheme, netloc, path, params, query, fragment) = urlparse.urlparse(data.group(2))
+-            servers.append((netloc, rid))
+-        else:
+-            print "unable to decode: %s" % ruv
++    for e in entries:
++        for ruv in e[1]['nsds50ruv']:
++            if ruv.startswith('{replicageneration'):
++                continue
++            data = re.match('\{replica (\d+) (ldap://.*:\d+)\}(\s+\w+\s+\w*){0,1}', ruv)
++            if data:
++                rid = data.group(1)
++                (scheme, netloc, path, params, query, fragment) = urlparse.urlparse(data.group(2))
++                servers.append((netloc, rid))
++            else:
++                print "unable to decode: %s" % ruv
+ 
+     return servers
+ 
+-- 
+1.7.11.7
+

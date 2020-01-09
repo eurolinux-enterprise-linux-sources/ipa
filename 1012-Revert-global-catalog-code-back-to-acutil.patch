@@ -1,0 +1,59 @@
+From 865dc357c91dfdeb22ae0d3e6b01e3bc55314030 Mon Sep 17 00:00:00 2001
+From: Martin Kosek <mkosek@redhat.com>
+Date: Wed, 7 Nov 2012 09:26:56 +0100
+Subject: [PATCH] Revert global catalog code back to acutil
+
+Commit 4cf3c2d5053bad8e62a80ffa586f8d5c1f7e41cd introducing resolving
+external members via Global Catalog used python-dns package to
+read SRV records in chosen DNS domain.
+
+Replace python-dns usage with acutil usage which is available
+in RHEL.
+---
+ ipaserver/dcerpc.py | 23 +++++++++++++----------
+ 1 file changed, 13 insertions(+), 10 deletions(-)
+
+diff --git a/ipaserver/dcerpc.py b/ipaserver/dcerpc.py
+index 4eddbcdc304de9e50c5ccb9a71808fb71cf5b844..5cd7c19ffea3cd40d1cda9016c5231bcc5825053 100644
+--- a/ipaserver/dcerpc.py
++++ b/ipaserver/dcerpc.py
+@@ -49,8 +49,7 @@ except ImportError:
+ import ldap as _ldap
+ from ipaserver.ipaldap import IPAdmin
+ from ipalib.session import krbccache_dir, krbccache_prefix
+-from dns import resolver, rdatatype
+-from dns.exception import DNSException
++from ipapython import dnsclient
+ 
+ __doc__ = _("""
+ Classes to manage trust joins using DCE-RPC calls
+@@ -373,14 +372,18 @@ class DomainValidator(object):
+             # Retrieve GC servers list
+             gc_name = '_gc._tcp.%s.' % info['dns_domain']
+ 
+-            try:
+-                answers = resolver.query(gc_name, rdatatype.SRV)
+-            except DNSException, e:
+-                answers = []
+-
+-            for answer in answers:
+-                server = str(answer.target).rstrip(".")
+-                servers.append((server, answer.port))
++            results = dnsclient.query(gc_name, dnsclient.DNS_C_IN, dnsclient.DNS_T_SRV)
++            for result in results:
++                if result.dns_type == dnsclient.DNS_T_SRV:
++                    server = result.rdata.server.rstrip(".")
++                    if not server:
++                        continue
++                    try:
++                        port = int(result.rdata.port)
++                    except ValueError:
++                        # invalid port number, should not happen
++                        continue
++                    servers.append((server, port))
+ 
+         info['gc'] = servers
+ 
+-- 
+1.7.11.7
+

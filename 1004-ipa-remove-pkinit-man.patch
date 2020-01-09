@@ -1,0 +1,95 @@
+From 2145707622696e3db93d162b992cf21dacc5dea4 Mon Sep 17 00:00:00 2001
+From: Rob Crittenden <rcritten@redhat.com>
+Date: Thu, 30 Aug 2012 10:52:45 -0400
+Subject: [PATCH 4/8] Remove pkinit references from tool man pages
+
+---
+ install/tools/man/ipa-replica-install.1 |    5 -----
+ install/tools/man/ipa-replica-prepare.1 |    9 ---------
+ install/tools/man/ipa-server-install.1  |    9 ---------
+ 3 files changed, 0 insertions(+), 23 deletions(-)
+
+diff --git a/install/tools/man/ipa-replica-install.1 b/install/tools/man/ipa-replica-install.1
+index 1a0f89a410b3409adbc790b114d14fee8e9e1952..4b23043777807e8030f2f6e0dfd31458bb09e1e6 100644
+--- a/install/tools/man/ipa-replica-install.1
++++ b/install/tools/man/ipa-replica-install.1
+@@ -66,11 +66,6 @@ Enable debug logging when more verbose output is needed
+ \fB\-U\fR, \fB\-\-unattended\fR
+ An unattended installation that will never prompt for user input
+ 
+-.SS "CERTIFICATE SYSTEM OPTIONS"
+-.TP
+-\fB\-\-no\-pkinit\fR
+-Disables pkinit setup steps
+-
+ .SS "DNS OPTIONS"
+ .TP
+ \fB\-\-setup\-dns\fR
+diff --git a/install/tools/man/ipa-replica-prepare.1 b/install/tools/man/ipa-replica-prepare.1
+index f30ed10c17cfde9e54c3ce9556a8d03671398227..539234d71388ed764e247e5d35520dfabf853e39 100644
+--- a/install/tools/man/ipa-replica-prepare.1
++++ b/install/tools/man/ipa-replica-prepare.1
+@@ -39,18 +39,12 @@ PKCS#12 file containing the Directory Server SSL Certificate and Private Key
+ \fB\-\-http_pkcs12\fR=\fIFILE\fR
+ PKCS#12 file containing the Apache Server SSL Certificate and Private Key
+ .TP
+-\fB\-\-pkinit_pkcs12\fR=\fIFILE\fR
+-PKCS#12 file containing the Kerberos KDC Certificate and Private Key
+-.TP
+ \fB\-\-dirsrv_pin\fR=\fIDIRSRV_PIN\fR
+ The password of the Directory Server PKCS#12 file
+ .TP
+ \fB\-\-http_pin\fR=\fIHTTP_PIN\fR
+ The password of the Apache Server PKCS#12 file
+ .TP
+-\fB\-\-pkinit_pin\fR=\fIPKINIT_PIN\fR
+-The password of the Kerberos KDC PKCS#12 file
+-.TP
+ \fB\-p\fR \fIDM_PASSWORD\fR, \fB\-\-password\fR=\fIDM_PASSWORD\fR
+ Directory Manager (existing master) password
+ .TP
+@@ -66,9 +60,6 @@ Do not create reverse DNS zone
+ \fB\-\-ca\fR=\fICA_FILE\fR
+ Location of CA PKCS#12 file, default /root/cacert.p12
+ .TP
+-\fB\-\-no\-pkinit\fR
+-Disables pkinit setup steps
+-.TP
+ \fB\-\-debug\fR
+ Prints info log messages to the output
+ .SH "EXIT STATUS"
+diff --git a/install/tools/man/ipa-server-install.1 b/install/tools/man/ipa-server-install.1
+index 61b7c669ca26d5fecbdbd9e30fccad4c1d4d9701..57f246b7d34f6b8b012f76c82c1e58ab6292fec6 100644
+--- a/install/tools/man/ipa-server-install.1
++++ b/install/tools/man/ipa-server-install.1
+@@ -87,27 +87,18 @@ File containing PKCS#10 certificate
+ \fB\-\-external_ca_file\fR=\fIFILE\fR
+ File containing PKCS#10 of the external CA chain
+ .TP
+-\fB\-\-no\-pkinit\fR
+-Disables pkinit setup steps
+-.TP
+ \fB\-\-dirsrv_pkcs12\fR=\fIFILE\fR
+ PKCS#12 file containing the Directory Server SSL Certificate
+ .TP
+ \fB\-\-http_pkcs12\fR=\fIFILE\fR
+ PKCS#12 file containing the Apache Server SSL Certificate
+ .TP
+-\fB\-\-pkinit_pkcs12\fR=\fIFILE\fR
+-PKCS#12 file containing the Kerberos KDC SSL certificate
+-.TP
+ \fB\-\-dirsrv_pin\fR=\fIDIRSRV_PIN\fR
+ The password of the Directory Server PKCS#12 file
+ .TP
+ \fB\-\-http_pin\fR=\fIHTTP_PIN\fR
+ The password of the Apache Server PKCS#12 file
+ .TP
+-\fB\-\-pkinit_pin\fR=\fIPKINIT_PIN\fR
+-The password of the Kerberos KDC PKCS#12 file
+-.TP
+ \fB\-\-subject\fR=\fISUBJECT\fR
+ The certificate subject base (default O=REALM.NAME)
+ .TP
+-- 
+1.7.1
+
