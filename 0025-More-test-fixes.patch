@@ -1,0 +1,78 @@
+From 9c62af973d71cabaf8d93216717468385ac2abbe Mon Sep 17 00:00:00 2001
+From: Christian Heimes <cheimes@redhat.com>
+Date: Mon, 25 Mar 2019 18:36:19 +0100
+Subject: [PATCH] More test fixes
+
+Fixes: https://pagure.io/freeipa/issue/7892
+Signed-off-by: Christian Heimes <cheimes@redhat.com>
+Reviewed-By: Thomas Woerner <twoerner@redhat.com>
+Reviewed-By: Francois Cami <fcami@redhat.com>
+---
+ .../test_integration/test_replica_promotion.py | 18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/ipatests/test_integration/test_replica_promotion.py b/ipatests/test_integration/test_replica_promotion.py
+index 3be2ea95fa2325edfc74cbb902ce0a5966aa82d7..9ce0074ea0df276b4800b306530d04c8274ece69 100644
+--- a/ipatests/test_integration/test_replica_promotion.py
++++ b/ipatests/test_integration/test_replica_promotion.py
+@@ -843,7 +843,7 @@ class TestHiddenReplicaPromotion(IntegrationTest):
+     def _check_server_role(self, host, status):
+         roles = [u'IPA master', u'CA server', u'KRA server', u'DNS server']
+         for role in roles:
+-            result = self.master.run_command([
++            result = self.replicas[0].run_command([
+                 'ipa', 'server-role-find',
+                 '--server', host.hostname,
+                 '--role', role
+@@ -859,7 +859,7 @@ class TestHiddenReplicaPromotion(IntegrationTest):
+             'IPA DNS servers'
+         ]
+ 
+-        result = self.master.run_command(['ipa', 'config-show'])
++        result = self.replicas[0].run_command(['ipa', 'config-show'])
+         values = {}
+         for line in result.stdout_text.split('\n'):
+             if ':' not in line:
+@@ -868,8 +868,9 @@ class TestHiddenReplicaPromotion(IntegrationTest):
+             values[k.strip()] = {item.strip() for item in v.split(',')}
+ 
+         for service in services:
+-            assert values[service] == enabled
+-            assert values['Hidden {}'.format(service)] == hidden
++            hservice = 'Hidden {}'.format(service)
++            assert values.get(service, set()) == enabled
++            assert values.get(hservice, set()) == hidden
+ 
+     def test_hidden_replica_install(self):
+         # TODO: check that all services are running on hidden replica
+@@ -909,19 +910,26 @@ class TestHiddenReplicaPromotion(IntegrationTest):
+         # backup
+         backup_path = backup(self.replicas[0])
+         # uninstall
+-        tasks.uninstall_replica(self.master, self.replicas[0])
++        tasks.uninstall_master(self.replicas[0])
+         # restore
+         dirman_password = self.master.config.dirman_password
+         self.replicas[0].run_command(
+             ['ipa-restore', backup_path],
+             stdin_text=dirman_password + '\nyes'
+         )
++        # give replication some time
++        time.sleep(5)
++
+         # check that role is still hidden
++        tasks.kinit_admin(self.replicas[0])
++        self._check_config([self.master], [self.replicas[0]])
+         self._check_server_role(self.replicas[0], 'hidden')
+         self._check_dnsrecords([self.master], [self.replicas[0]])
++
+         # check that the resulting server can be promoted to enabled
+         self.replicas[0].run_command([
+             'ipa', 'server-mod', self.replicas[0].hostname, '--state=enabled'
+         ])
++        self._check_config([self.master, self.replicas[0]])
+         self._check_server_role(self.replicas[0], 'enabled')
+         self._check_dnsrecords([self.master, self.replicas[0]])
+-- 
+2.20.1
+

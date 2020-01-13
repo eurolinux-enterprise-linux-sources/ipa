@@ -1,0 +1,47 @@
+From 4145fbdb5428b11274344cfc97eb2fe5ba9537a5 Mon Sep 17 00:00:00 2001
+From: Fraser Tweedale <ftweedal@redhat.com>
+Date: Thu, 7 Dec 2017 12:52:54 +1100
+Subject: [PATCH] Add uniqueness constraint on CA ACL name
+
+It is possible to add caacl entries with same "name" (cn).  The
+command is supposed to prevent this but direct LDAP operations allow
+it and doing that will cause subsequent errors.
+
+Enable the DS uniqueness constraint plugin for the cn attribute in
+CA ACL entries.
+
+Fixes: https://pagure.io/freeipa/issue/7304
+Reviewed-By: Alexander Bokovoy <abokovoy@redhat.com>
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+---
+ install/updates/10-uniqueness.update | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/install/updates/10-uniqueness.update b/install/updates/10-uniqueness.update
+index 050bfd55ec2e6a09c44700ae40757ee1d72c136f..77facba195cb5a1564818010f97afdd15d65a274 100644
+--- a/install/updates/10-uniqueness.update
++++ b/install/updates/10-uniqueness.update
+@@ -92,3 +92,20 @@ add:uniqueness-across-all-subtrees: on
+ dn: cn=ipaUniqueID uniqueness,cn=plugins,cn=config
+ add:uniqueness-exclude-subtrees: cn=staged users,cn=accounts,cn=provisioning,$SUFFIX
+ add:uniqueness-across-all-subtrees: on
++
++dn: cn=caacl name uniqueness,cn=plugins,cn=config
++default:objectClass: top
++default:objectClass: nsSlapdPlugin
++default:objectClass: extensibleObject
++default:cn: caacl name uniqueness
++default:nsslapd-pluginDescription: Enforce unique attribute values
++default:nsslapd-pluginPath: libattr-unique-plugin
++default:nsslapd-pluginInitfunc: NSUniqueAttr_Init
++default:nsslapd-pluginType: preoperation
++default:nsslapd-pluginEnabled: on
++default:uniqueness-attribute-name: cn
++default:uniqueness-subtrees: cn=caacls,cn=ca,$SUFFIX
++default:nsslapd-plugin-depends-on-type: database
++default:nsslapd-pluginId: NSUniqueAttr
++default:nsslapd-pluginVersion: 1.1.0
++default:nsslapd-pluginVendor: Fedora Project
+-- 
+2.20.1
+

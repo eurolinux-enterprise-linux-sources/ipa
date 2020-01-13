@@ -1,0 +1,361 @@
+From 4b853e8c2f57034c9a72b96fc028e66aa3175a07 Mon Sep 17 00:00:00 2001
+From: Serhii Tsymbaliuk <stsymbal@redhat.com>
+Date: Tue, 12 Feb 2019 10:44:33 +0100
+Subject: [PATCH] Web UI (topology graph): Show FQDN for nodes if they have no
+ common DNS zone
+
+It allows to avoid confusion with identical short hostnames.
+
+There are two cases implemented:
+- no common DNS zone: graph shows FQDN for all nodes
+- all nodes have one common DNS zone: graph shows DN relatively to the common zone
+
+https://pagure.io/freeipa/issue/7206
+
+Reviewed-By: Florence Blanc-Renaud <flo@redhat.com>
+---
+ install/ui/src/freeipa/topology.js       |  64 +++++++++
+ install/ui/src/freeipa/topology_graph.js |   3 +-
+ install/ui/test/all_tests.html           |   4 +-
+ install/ui/test/index.html               |   1 +
+ install/ui/test/topology_tests.html      |  25 ++++
+ install/ui/test/topology_tests.js        | 158 +++++++++++++++++++++++
+ 6 files changed, 252 insertions(+), 3 deletions(-)
+ create mode 100644 install/ui/test/topology_tests.html
+ create mode 100644 install/ui/test/topology_tests.js
+
+diff --git a/install/ui/src/freeipa/topology.js b/install/ui/src/freeipa/topology.js
+index e98cb1e0ace1874056d3affa98c9518509f90558..fd7a2833abc04ffe7c3f8405bde4df0e6b942349 100644
+--- a/install/ui/src/freeipa/topology.js
++++ b/install/ui/src/freeipa/topology.js
+@@ -1374,6 +1374,33 @@ topology.TopologyGraphWidget = declare([Stateful, Evented], {
+         return deferred.promise;
+     },
+ 
++    _find_common_domain: function(nodes) {
++        if (nodes.length < 2) {
++            return '';
++        }
++
++        var common_labels = null;
++
++        for (var i=0, l=nodes.length; i<l; i++) {
++            var node = nodes[i];
++            var labels = node.id.split('.').reverse();
++
++            if (common_labels === null) {
++                common_labels = labels;
++                continue;
++            }
++
++            for (var j=0; j<common_labels.length; j++) {
++                if (labels[j] !== common_labels[j]) {
++                    common_labels = common_labels.slice(0, j);
++                    break;
++                }
++            }
++        }
++
++        return common_labels.reverse().join('.');
++    },
++
+     /**
+      * @param {Object} size - dict contains height and width value. (optional)
+      */
+@@ -1383,6 +1410,43 @@ topology.TopologyGraphWidget = declare([Stateful, Evented], {
+         if (IPA.domain_level < topology.required_domain_level) return;
+ 
+         when(this._get_data()).then(function(data) {
++            // remove common domain labels from node FQDN
++            // Example #1:
++            //   nodes:
++            //    - master.ipa.example.com
++            //    - replica.ipa.example.com
++            //   common domain: ipa.example.com
++            //   captions: master, replica
++            //
++            // Example #2:
++            //   nodes:
++            //    - master.net1.example.com
++            //    - replica.net1.example.com
++            //    - replica.net2.example.com
++            //   common domain: example.com
++            //   captions: master.net1, replica.net1, replica.net2
++            //
++            var common_domain = this._find_common_domain(data.nodes);
++
++            if (this.parent) {
++                var title = this.parent.title;
++                if (common_domain) {
++                    title += ' (' + common_domain + ')';
++                }
++                this.parent.header.title_widget.update({text: title});
++            }
++
++            for (var i=0,l=data.nodes.length; i<l; i++) {
++                var node = data.nodes[i];
++                if (l > 1 && common_domain.length > 0) {
++                    node.caption = node.id.substring(
++                        0, node.id.length - common_domain.length - 1
++                    );
++                } else {
++                    node.caption = node.id;
++                }
++            }
++
+             if (!this.graph) {
+                 this.graph = new topology_graph.TopoGraph({
+                     nodes: data.nodes,
+diff --git a/install/ui/src/freeipa/topology_graph.js b/install/ui/src/freeipa/topology_graph.js
+index 9f549133b516dbfe471080714845b457fd62ab1a..b736a22f63aa9a5685ac5840f60f9e2c89fb4525 100644
+--- a/install/ui/src/freeipa/topology_graph.js
++++ b/install/ui/src/freeipa/topology_graph.js
+@@ -180,7 +180,6 @@ topology_graph.TopoGraph = declare([Evented], {
+         this._target_node = null;
+         this.restart();
+     },
+-
+     _create_svg: function(container) {
+         var self = this;
+ 
+@@ -804,7 +803,7 @@ topology_graph.TopoGraph = declare([Evented], {
+             .attr('class', 'id')
+             .attr('fill', '#002235')
+             .text(function(d) {
+-                return d.id.split('.')[0];
++                return d.caption;
+             });
+ 
+         // remove old nodes
+diff --git a/install/ui/test/all_tests.html b/install/ui/test/all_tests.html
+index cdb04b395a878db4338da7458b8f52f13514ead9..f85ae3390a923ad3083779e1ddfcdca6afa2377e 100644
+--- a/install/ui/test/all_tests.html
++++ b/install/ui/test/all_tests.html
+@@ -26,7 +26,8 @@
+             'test/utils_tests',
+             'test/build_tests',
+             'test/binding_tests',
+-        ], function(om, ipa, details, entity, as, nav, cert, aci, wid, ip, ut, bt, bi){
++            'test/topology_tests',
++        ], function(om, ipa, details, entity, as, nav, cert, aci, wid, ip, ut, bt, bi, topo){
+             om();
+             ipa();
+             details();
+@@ -40,6 +41,7 @@
+             ut();
+             bt();
+             bi();
++            topo();
+         });
+     </script>
+ </head>
+diff --git a/install/ui/test/index.html b/install/ui/test/index.html
+index 89af3211cd9791ee3055ca85ddae6afdf5b9edcf..0fd5b83d696e7e368f5ca7d726c5e4301b05acfe 100644
+--- a/install/ui/test/index.html
++++ b/install/ui/test/index.html
+@@ -37,6 +37,7 @@
+         <li><a href="utils_tests.html">Utils Test Suite</a>
+         <li><a href="build_tests.html">Build Test Suite</a>
+         <li><a href="binding_tests.html">Binding Test Suite</a>
++        <li><a href="topology_tests.html">Topology Test Suite</a>
+         </ul>
+     </div>
+ 
+diff --git a/install/ui/test/topology_tests.html b/install/ui/test/topology_tests.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..29ca44ddcc004efbdad9860276906b7111bb40b0
+--- /dev/null
++++ b/install/ui/test/topology_tests.html
+@@ -0,0 +1,25 @@
++<!DOCTYPE html>
++<html>
++<head>
++    <title>Topology Test Suite</title>
++    <link rel="stylesheet" href="qunit.css" type="text/css" media="screen">
++    <script type="text/javascript" src="qunit.js"></script>
++    <script type="text/javascript" src="../js/libs/loader.js"></script>
++    <script type="text/javascript" src="../js/libs/jquery.js"></script>
++    <script type="text/javascript" src="../js/libs/jquery.ordered-map.js"></script>
++    <script type="text/javascript" src="config.js"></script>
++    <script type="text/javascript" src="../js/dojo/dojo.js"></script>
++
++    <script type="text/javascript">
++        require(['test/topology_tests'], function(tests){ tests() });
++    </script>
++</head>
++<body>
++    <h1 id="qunit-header">Topology Test Suite</h1>
++    <h2 id="qunit-banner"></h2>
++    <div id="qunit-testrunner-toolbar"></div>
++    <h2 id="qunit-userAgent"></h2>
++    <ol id="qunit-tests"></ol>
++    <div id="qunit-fixture"></div>
++</body>
++</html>
+diff --git a/install/ui/test/topology_tests.js b/install/ui/test/topology_tests.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..6458a83f2794969e2916899975707b6c554ac314
+--- /dev/null
++++ b/install/ui/test/topology_tests.js
+@@ -0,0 +1,158 @@
++/**
++ * Copyright (C) 2019  FreeIPA Contributors see COPYING for license
++ */
++
++define([
++        'freeipa/ipa',
++        'freeipa/topology',
++        'freeipa/jquery'],
++    function(IPA, topology, $) {
++        return function() {
++
++var widget;
++
++function inject_data(widget, data) {
++    widget._get_data = function() {
++        return data;
++    };
++}
++
++QUnit.module('topology', {
++    beforeEach: function(assert) {
++        widget = new topology.TopologyGraphWidget(
++            topology.topology_graph_facet_spec
++        );
++        widget.render();
++    }
++});
++
++QUnit.test('Testing TopoGraph nodes', function(assert) {
++    var nodes = [
++        { id: 'master.ipa.test' },
++        { id: 'replica.ipa.test' }
++    ];
++
++    var suffixes = [
++        { cn: ['ca'] },
++        { cn: ['domain'] }
++    ];
++
++    inject_data(widget, { nodes: nodes, links: [], suffixes: suffixes });
++
++    widget.update();
++
++    assert.ok($('circle.node', widget.el).length === nodes.length,
++        'Checking rendered nodes count');
++
++    assert.ok($('text.id:eq(0)', widget.el).text() === 'master',
++        'Checking "master" node label');
++    assert.ok($('text.id:eq(1)', widget.el).text() === 'replica',
++        'Checking "replica" node label');
++
++    assert.ok($('text.suffix:eq(0)', widget.el).text() === 'ca',
++        'Checking "ca" suffix');
++    assert.ok($('text.suffix:eq(1)', widget.el).text() === 'domain',
++        'Checking "domain" suffix');
++});
++
++QUnit.test('Testing TopoGraph links', function(assert) {
++    var nodes = [
++        { id: 'master.ipa.test', targets: { 'replica.ipa.test': [] } },
++        { id: 'replica.ipa.test' }
++    ];
++
++    var suffixes = [
++        { cn: ['ca'] },
++        { cn: ['domain'] }
++    ];
++
++    var links = [{
++        source: 0,
++        target: 1,
++        left: false,
++        right: true,
++        suffix: suffixes[0]
++    }];
++
++    inject_data(widget, { nodes: nodes, links: links, suffixes: suffixes });
++    widget.update();
++
++    assert.ok($('circle.node', widget.el).length === nodes.length,
++        'Checking rendered nodes count');
++
++    var rendered_links = $('path.link', widget.el).not('.dragline');
++    assert.ok(rendered_links.length === 1,
++        'Checking right direction link is rendered');
++
++    var marker = rendered_links.first().css('marker-end');
++    assert.ok(marker && marker !== 'none',
++        'Checking right direction link has proper marker');
++
++    links.push({
++        source: 0,
++        target: 1,
++        left: true,
++        right: false,
++        suffix: suffixes[1]
++    })
++
++    inject_data(widget, {
++        nodes: nodes,
++        links: links,
++        suffixes: suffixes
++    });
++    widget.update();
++
++    rendered_links = $('path.link', widget.el).not('.dragline')
++    assert.ok(rendered_links.length === 2,
++        'Checking left direction link is rendered');
++
++    marker = rendered_links.last().css('marker-start');
++    assert.ok(marker && marker !== 'none',
++        'Checking left direction link has proper marker');
++});
++
++QUnit.test('Testing TopoGraph for multiple DNS zones', function(assert) {
++    var nodes = [
++        { id: 'master.ipa.zone1' },
++        { id: 'replica.ipa.zone1' },
++        { id: 'master.ipa.zone2' },
++        { id: 'master.ipa.zone1.common' },
++        { id: 'replica.ipa.zone2.common' },
++    ];
++
++    var suffixes = [
++        { cn: ['ca'] },
++        { cn: ['domain'] }
++    ];
++
++    inject_data(widget, { nodes: nodes, links: [], suffixes: suffixes });
++    widget.update();
++
++    $('text.id', widget.el).each(function(i) {
++        assert.ok($(this).text() === nodes[i].id,
++            'Checking node label "' + $(this).text() + '" is FQDN');
++    });
++
++    nodes = nodes.filter(function(node) { return /\.common$/.test(node.id) });
++
++    inject_data(widget, { nodes: nodes, links: [], suffixes: suffixes });
++    widget.update();
++
++    $('text.id', widget.el).each(function(i) {
++        assert.ok($(this).text().indexOf('common') < 0,
++            'Checking node label "' + $(this).text() + '" is relative');
++    });
++});
++
++QUnit.test('Testing TopoGraph with one node', function(assert) {
++    var node = { id: 'master.ipa.test' };
++
++    inject_data(widget, { nodes: [node], links: [], suffixes: [] });
++    widget.update();
++
++    assert.ok($('text.id:eq(0)', widget.el).text() === node.id,
++        'Checking node label is FQDN');
++});
++
++};});
+-- 
+2.20.1
+

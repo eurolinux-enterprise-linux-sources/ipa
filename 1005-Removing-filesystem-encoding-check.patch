@@ -1,0 +1,130 @@
+From 86f46e3669503e47c95bbe4aab8ba121a9cb5a17 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tibor=20Dudl=C3=A1k?= <tdudlak@redhat.com>
+Date: Fri, 10 Aug 2018 13:16:38 +0200
+Subject: [PATCH] Removing filesystem encoding check
+
+RHEL doesn't support the generic locale "C.UTF-8"
+See BZ: https://bugzilla.redhat.com/show_bug.cgi?id=1590680
+
+Revertis commit: e1bd827bbf56970ddd02ec174bf2317b64e75514
+---
+ install/conf/ipa.conf                 |  3 +--
+ install/share/ipa-httpd.conf.template |  1 -
+ ipalib/errors.py                      | 11 -----------
+ ipalib/plugable.py                    |  5 -----
+ ipatests/test_cmdline/test_cli.py     | 24 +-----------------------
+ 5 files changed, 2 insertions(+), 42 deletions(-)
+
+diff --git a/install/conf/ipa.conf b/install/conf/ipa.conf
+index c5fc518f803d379287043b405efeb46dd53a6b28..e15437b1804203ab85caaea420dde8fc12b15070 100644
+--- a/install/conf/ipa.conf
++++ b/install/conf/ipa.conf
+@@ -48,8 +48,7 @@ WSGISocketPrefix /run/httpd/wsgi
+ 
+ # Configure mod_wsgi handler for /ipa
+ WSGIDaemonProcess ipa processes=$WSGI_PROCESSES threads=1 maximum-requests=500 \
+-  user=ipaapi group=ipaapi display-name=%{GROUP} \
+-  lang=C.UTF-8 locale=C.UTF-8
++  user=ipaapi group=ipaapi display-name=%{GROUP}
+ WSGIImportScript /usr/share/ipa/wsgi.py process-group=ipa application-group=ipa
+ WSGIScriptAlias /ipa /usr/share/ipa/wsgi.py
+ WSGIScriptReloading Off
+diff --git a/install/share/ipa-httpd.conf.template b/install/share/ipa-httpd.conf.template
+index 210d5d3883705b25b36050f50fdc1b49e830eb81..39bcfcca791c76f034224c00c9c2f85b652f78bb 100644
+--- a/install/share/ipa-httpd.conf.template
++++ b/install/share/ipa-httpd.conf.template
+@@ -4,5 +4,4 @@
+ Environment=KRB5CCNAME=$KRB5CC_HTTPD
+ Environment=GSS_USE_PROXY=yes
+ Environment=KDCPROXY_CONFIG=$KDCPROXY_CONFIG
+-Environment=LC_ALL=C.UTF-8
+ ExecStartPre=$IPA_HTTPD_KDCPROXY
+diff --git a/ipalib/errors.py b/ipalib/errors.py
+index 6356d523e8c0ac63e8892292dd9991c9ee8211aa..ae940798779d20cb83b7f96a625c6facfe983f95 100644
+--- a/ipalib/errors.py
++++ b/ipalib/errors.py
+@@ -453,17 +453,6 @@ class EnvironmentError(PublicError):
+     errno = 912
+ 
+ 
+-class SystemEncodingError(PublicError):
+-    """
+-    **913** Raised when system encoding is not UTF-8
+-    """
+-
+-    errno = 913
+-    format = _(
+-        "System encoding must be UTF-8, '%(encoding)s' is not supported. "
+-        "Set LC_ALL=\"C.UTF-8\", or LC_ALL=\"\" and LC_CTYPE=\"C.UTF-8\"."
+-    )
+-
+ ##############################################################################
+ # 1000 - 1999: Authentication errors
+ class AuthenticationError(PublicError):
+diff --git a/ipalib/plugable.py b/ipalib/plugable.py
+index 3a5a322f4b753302c58af9cfcb5a29f09e8350bb..535df5c007d99b73e5ff31f5fc4813c0fcf956ac 100644
+--- a/ipalib/plugable.py
++++ b/ipalib/plugable.py
+@@ -491,11 +491,6 @@ class API(ReadOnly):
+         handler.setFormatter(ipa_log_manager.Formatter(LOGGING_FORMAT_STDERR))
+         root_logger.addHandler(handler)
+ 
+-        # check after logging is set up but before we create files.
+-        fse = sys.getfilesystemencoding()
+-        if fse.lower() not in {'utf-8', 'utf8'}:
+-            raise errors.SystemEncodingError(encoding=fse)
+-
+         # Add file handler:
+         if self.env.mode in ('dummy', 'unit_test'):
+             return  # But not if in unit-test mode
+diff --git a/ipatests/test_cmdline/test_cli.py b/ipatests/test_cmdline/test_cli.py
+index b660532bd6e8db964b8287845ed1b5ebbcb43b9b..60309c58f250a263c8c3d13b0b47773b2db9e4d0 100644
+--- a/ipatests/test_cmdline/test_cli.py
++++ b/ipatests/test_cmdline/test_cli.py
+@@ -1,8 +1,6 @@
+-import contextlib
+-import os
+ import shlex
+-import subprocess
+ import sys
++import contextlib
+ import tempfile
+ 
+ import nose
+@@ -19,8 +17,6 @@ if six.PY3:
+ 
+ TEST_ZONE = u'zoneadd.%(domain)s' % api.env
+ 
+-HERE = os.path.abspath(os.path.dirname(__file__))
+-BASE_DIR = os.path.abspath(os.path.join(HERE, os.pardir, os.pardir))
+ 
+ 
+ @pytest.mark.tier0
+@@ -325,24 +321,6 @@ class TestCLIParsing(object):
+             )
+ 
+ 
+-def test_cli_fsencoding():
+-    # https://pagure.io/freeipa/issue/5887
+-    env = {
+-        key: value for key, value in os.environ.items()
+-        if not key.startswith(('LC_', 'LANG'))
+-    }
+-    env['LC_ALL'] = 'C'
+-    env['PYTHONPATH'] = BASE_DIR
+-    p = subprocess.Popen(
+-        [sys.executable, '-m', 'ipaclient', 'help'],
+-        stdout=subprocess.PIPE,
+-        stderr=subprocess.PIPE,
+-        env=env,
+-    )
+-    out, err = p.communicate()
+-    assert p.returncode > 0, (out, err)
+-    assert b'System encoding must be UTF-8' in err, (out, err)
+-
+ 
+ IPA_NOT_CONFIGURED = b'IPA is not configured on this system'
+ IPA_CLIENT_NOT_CONFIGURED = b'IPA client is not configured on this system'
+-- 
+2.20.1
+

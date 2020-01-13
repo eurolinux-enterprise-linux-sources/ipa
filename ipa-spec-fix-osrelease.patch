@@ -1,0 +1,27 @@
+From: aleksander.baranowski
+Date: Fri, 22 Jun 2018 16:12:58 +0200
+Subject: Re: [SCIENTIFIC-LINUX-DEVEL] os-release
+
+Should fix up the spec file to build with the right ipa platform
+
+--- ipa.spec	2017-08-02 17:21:26.120650176 -0500
++++ ipa.spec	2017-08-02 17:24:27.415773525 -0500
+@@ -958,7 +958,8 @@
+ %configure --with-vendor-suffix=-%{release} \
+            %{enable_server_option} \
+            %{with_ipatests_option} \
+-           %{linter_options}
++           %{linter_options} \
++           --with-ipaplatform=rhel
+ 
+ %make_build
+ 
+@@ -979,7 +980,8 @@
+ %configure --with-vendor-suffix=-%{release} \
+            %{enable_server_option} \
+            %{with_ipatests_option} \
+-           %{linter_options}
++           %{linter_options}\
++           --with-ipaplatform=rhel
+ popd
+ %endif # with_python3

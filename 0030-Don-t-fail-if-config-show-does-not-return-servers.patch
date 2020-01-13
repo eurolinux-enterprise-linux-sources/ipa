@@ -1,0 +1,60 @@
+From a9b0d9b109d0f35adbf45ef8d158f276014c7c8b Mon Sep 17 00:00:00 2001
+From: Christian Heimes <cheimes@redhat.com>
+Date: Tue, 26 Mar 2019 20:09:27 +0100
+Subject: [PATCH] Don't fail if config-show does not return servers
+
+When uninstalling a cluster and only hidden servers are left,
+config-show can return a result set without ipa_master_server entry.
+
+Fixes: https://pagure.io/freeipa/issue/7892
+Signed-off-by: Christian Heimes <cheimes@redhat.com>
+Reviewed-By: Thomas Woerner <twoerner@redhat.com>
+Reviewed-By: Francois Cami <fcami@redhat.com>
+---
+ ipaserver/install/ca.py     | 2 +-
+ ipaserver/plugins/pkinit.py | 2 +-
+ ipaserver/plugins/server.py | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/ipaserver/install/ca.py b/ipaserver/install/ca.py
+index 716f3b3dc1fc81438b74d4fa393f7f17d6d2a802..09b3c09e758775de77cdf4ac5cae755183aa8f8c 100644
+--- a/ipaserver/install/ca.py
++++ b/ipaserver/install/ca.py
+@@ -106,7 +106,7 @@ def uninstall_check(options):
+ 
+     # skip the checks if the host is the last master
+     ipa_config = api.Command.config_show()['result']
+-    ipa_masters = ipa_config['ipa_master_server']
++    ipa_masters = ipa_config.get('ipa_master_server', [])
+     if len(ipa_masters) <= 1:
+         return
+ 
+diff --git a/ipaserver/plugins/pkinit.py b/ipaserver/plugins/pkinit.py
+index 8853938460073f69f6e6242c5ae5c362b3faf4f7..6d42a9af11f2079054e59416f3930fbae5b65555 100644
+--- a/ipaserver/plugins/pkinit.py
++++ b/ipaserver/plugins/pkinit.py
+@@ -91,7 +91,7 @@ class pkinit_status(Search):
+         if server is not None:
+             servers = [server]
+         else:
+-            servers = ipa_master_config['ipa_master_server']
++            servers = ipa_master_config.get('ipa_master_server', [])
+ 
+         pkinit_servers = ipa_master_config.get('pkinit_server_server')
+         if pkinit_servers is None:
+diff --git a/ipaserver/plugins/server.py b/ipaserver/plugins/server.py
+index bfd1406ff826aea97195aa08ca35018e35cac18c..ee9c2ba7440dce276213bb97eaca621e1ef33efe 100644
+--- a/ipaserver/plugins/server.py
++++ b/ipaserver/plugins/server.py
+@@ -482,7 +482,7 @@ class server_del(LDAPDelete):
+ 
+         ipa_config = self.api.Command.config_show()['result']
+ 
+-        ipa_masters = ipa_config['ipa_master_server']
++        ipa_masters = ipa_config.get('ipa_master_server', [])
+ 
+         # skip these checks if the last master is being removed
+         if len(ipa_masters) <= 1:
+-- 
+2.20.1
+

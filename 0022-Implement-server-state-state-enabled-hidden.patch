@@ -1,0 +1,129 @@
+From 483fea9c199d76f1e759241ad32c990f5e0eaabc Mon Sep 17 00:00:00 2001
+From: Christian Heimes <cheimes@redhat.com>
+Date: Mon, 25 Mar 2019 08:36:53 +0100
+Subject: [PATCH] Implement server-state --state=enabled/hidden
+
+server-state modified the hidden / enabled flags of all configured
+services of a server. Since the command does not directly modify the
+server LDAP entry, the command has to be implemented as a dedicated plugin.
+
+Fixes: https://pagure.io/freeipa/issue/7892
+Signed-off-by: Christian Heimes <cheimes@redhat.com>
+Reviewed-By: Thomas Woerner <twoerner@redhat.com>
+Reviewed-By: Francois Cami <fcami@redhat.com>
+---
+ API.txt                     |  9 ++++++
+ ipaserver/plugins/server.py | 58 +++++++++++++++++++++++++++++++++++--
+ 2 files changed, 65 insertions(+), 2 deletions(-)
+
+diff --git a/API.txt b/API.txt
+index 2135300183e3dc2126309e8f892e79fe6b5178fb..222e30915ccc1fb4a6f3ce228669453f346fdde4 100644
+--- a/API.txt
++++ b/API.txt
+@@ -4471,6 +4471,14 @@ option: Str('version?')
+ output: Entry('result')
+ output: Output('summary', type=[<type 'unicode'>, <type 'NoneType'>])
+ output: PrimaryKey('value')
++command: server_state/1
++args: 1,2,3
++arg: Str('cn', cli_name='name')
++option: StrEnum('state', values=[u'enabled', u'hidden'])
++option: Str('version?')
++output: Output('result', type=[<type 'bool'>])
++output: Output('summary', type=[<type 'unicode'>, <type 'NoneType'>])
++output: PrimaryKey('value')
+ command: service_add/1
+ args: 1,13,3
+ arg: Principal('krbcanonicalname', cli_name='canonical_principal')
+@@ -6900,6 +6908,7 @@ default: server_role/1
+ default: server_role_find/1
+ default: server_role_show/1
+ default: server_show/1
++default: server_state/1
+ default: service/1
+ default: service_add/1
+ default: service_add_cert/1
+diff --git a/ipaserver/plugins/server.py b/ipaserver/plugins/server.py
+index e265883e3637938e3df5ecf132f4add62413a997..0d144d13bca66b65de64328139fd7126eea24c89 100644
+--- a/ipaserver/plugins/server.py
++++ b/ipaserver/plugins/server.py
+@@ -12,7 +12,7 @@ import ldap
+ import time
+ 
+ from ipalib import api, crud, errors, messages
+-from ipalib import Int, Flag, Str, DNSNameParam
++from ipalib import Int, Flag, Str, StrEnum, DNSNameParam
+ from ipalib.plugable import Registry
+ from .baseldap import (
+     LDAPSearch,
+@@ -28,8 +28,9 @@ from ipaplatform import services
+ from ipapython.dn import DN
+ from ipapython.dnsutil import DNSName
+ from ipaserver import topology
+-from ipaserver.servroles import ENABLED
++from ipaserver.servroles import ENABLED, HIDDEN
+ from ipaserver.install import bindinstance, dnskeysyncinstance
++from ipaserver.install.service import hide_services, enable_services
+ 
+ __doc__ = _("""
+ IPA servers
+@@ -949,3 +950,56 @@ class server_conncheck(crud.PKQuery):
+                                  messages.ExternalCommandOutput(line=line))
+ 
+         return result
++
++
++@register()
++class server_state(crud.PKQuery):
++    __doc__ = _("Set enabled/hidden state of a server.")
++
++    takes_options = (
++        StrEnum(
++            'state',
++            values=(u'enabled', u'hidden'),
++            label=_('State'),
++            doc=_('Server state'),
++            flags={'virtual_attribute', 'no_create', 'no_search'},
++        ),
++    )
++
++    msg_summary = _('Changed server state of "%(value)s".')
++
++    has_output = output.standard_boolean
++
++    def execute(self, *keys, **options):
++        fqdn = keys[0]
++        if options['state'] == u'enabled':
++            to_status = ENABLED
++            from_status = HIDDEN
++        else:
++            to_status = HIDDEN
++            from_status = ENABLED
++
++        roles = self.api.Command.server_role_find(
++            server_server=fqdn,
++            status=from_status,
++            include_master=True,
++        )['result']
++        from_roles = [r[u'role_servrole'] for r in roles]
++        if not from_roles:
++            # no server role is in source status
++            raise errors.EmptyModlist
++
++        if to_status == ENABLED:
++            enable_services(fqdn)
++        else:
++            hide_services(fqdn)
++
++        # update system roles
++        result = self.api.Command.dns_update_system_records()
++        if not result.get('value'):
++            self.add_message(messages.AutomaticDNSRecordsUpdateFailed())
++
++        return {
++            'value': fqdn,
++            'result': True,
++        }
+-- 
+2.20.1
+

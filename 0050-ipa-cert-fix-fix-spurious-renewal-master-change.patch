@@ -1,0 +1,36 @@
+From 1952fb1c90b444f7ecb0057451d5deb599df3d5f Mon Sep 17 00:00:00 2001
+From: Fraser Tweedale <ftweedal@redhat.com>
+Date: Mon, 27 May 2019 10:00:32 +1000
+Subject: [PATCH] ipa-cert-fix: fix spurious renewal master change
+
+We only want to become the renewal master if we actually renewed a
+shared certificate.  But there is a bug in the logic; even if the
+only Dogtag certificate to be renewed is the 'sslserver' (a
+non-shared certificate), the renewal master will be reset.  Fix the
+bug.
+
+A static type system would have excluded this bug.
+
+Part of: https://pagure.io/freeipa/issue/7885
+
+Reviewed-By: Florence Blanc-Renaud <flo@redhat.com>
+---
+ ipaserver/install/ipa_cert_fix.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ipaserver/install/ipa_cert_fix.py b/ipaserver/install/ipa_cert_fix.py
+index 5d5668b1d89115adcda167222ffc38a0caa690a2..fff054c230c414fdf10eef1cf1b00697a63e386a 100644
+--- a/ipaserver/install/ipa_cert_fix.py
++++ b/ipaserver/install/ipa_cert_fix.py
+@@ -128,7 +128,7 @@ class IPACertFix(AdminTool):
+         replicate_dogtag_certs(subject_base, ca_subject_dn, certs)
+         install_ipa_certs(subject_base, ca_subject_dn, extra_certs)
+ 
+-        if any(x != 'sslserver' for x in certs) \
++        if any(x[0] != 'sslserver' for x in certs) \
+                 or any(x[0] is IPACertType.IPARA for x in extra_certs):
+             # we renewed a "shared" certificate, therefore we must
+             # become the renewal master
+-- 
+2.20.1
+

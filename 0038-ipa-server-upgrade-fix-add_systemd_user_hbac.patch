@@ -1,0 +1,53 @@
+From e3c8a9b78f01e268a907bc97ad2914bf0d1236fc Mon Sep 17 00:00:00 2001
+From: Florence Blanc-Renaud <flo@redhat.com>
+Date: Mon, 1 Apr 2019 11:10:26 +0200
+Subject: [PATCH] ipa-server-upgrade: fix add_systemd_user_hbac
+
+During upgrade, the method add_systemd_user_hbac is creating
+a hbacsvc and a hbacrule, but fails in python2 because of
+unicode conversion errors.
+The arguments should be defined as u'value'.
+
+Fixes: https://pagure.io/freeipa/issue/7896
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+---
+ ipaserver/install/server/upgrade.py | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/ipaserver/install/server/upgrade.py b/ipaserver/install/server/upgrade.py
+index f4389d37909fc0b5aed960638de67243906b634d..ba0dfa423a3fc9560ef3c81c1d98cad39c320575 100644
+--- a/ipaserver/install/server/upgrade.py
++++ b/ipaserver/install/server/upgrade.py
+@@ -1689,12 +1689,12 @@ def update_replica_config(db_suffix):
+ 
+ def add_systemd_user_hbac():
+     logger.info('[Create systemd-user hbac service and rule]')
+-    rule = 'allow_systemd-user'
+-    service = 'systemd-user'
++    rule = u'allow_systemd-user'
++    service = u'systemd-user'
+     try:
+         api.Command.hbacsvc_add(
+             service,
+-            description='pam_systemd and systemd user@.service'
++            description=u'pam_systemd and systemd user@.service'
+         )
+     except ipalib.errors.DuplicateEntry:
+         logger.info('hbac service %s already exists', service)
+@@ -1707,10 +1707,10 @@ def add_systemd_user_hbac():
+     try:
+         api.Command.hbacrule_add(
+             rule,
+-            description=('Allow pam_systemd to run user@.service to create '
++            description=(u'Allow pam_systemd to run user@.service to create '
+                          'a system user session'),
+-            usercategory='all',
+-            hostcategory='all',
++            usercategory=u'all',
++            hostcategory=u'all',
+         )
+     except ipalib.errors.DuplicateEntry:
+         logger.info('hbac rule %s already exists', rule)
+-- 
+2.20.1
+

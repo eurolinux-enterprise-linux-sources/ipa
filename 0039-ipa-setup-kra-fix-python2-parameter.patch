@@ -1,0 +1,35 @@
+From 031b79d7111d6deaab05a8682014504b328614d7 Mon Sep 17 00:00:00 2001
+From: Florence Blanc-Renaud <flo@redhat.com>
+Date: Mon, 1 Apr 2019 11:35:48 +0200
+Subject: [PATCH] ipa-setup-kra: fix python2 parameter
+
+ipa-setup-kra is failing in python2 with
+invalid 'role_servrole': must be Unicode text
+because of a unicode conversion error.
+
+The method api.Command.server_role_find is called with the parameter
+role_servrole='IPA master' but it should rather be
+role_servrole=u'IPA master'
+
+Fixes: https://pagure.io/freeipa/issue/7897
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+---
+ ipaserver/install/service.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ipaserver/install/service.py b/ipaserver/install/service.py
+index 8948f64c2ec2db4cd013699e07dd94d5dba6c043..a60cb7f63dc0673deae0839de8c2bb8dc3a905c8 100644
+--- a/ipaserver/install/service.py
++++ b/ipaserver/install/service.py
+@@ -213,7 +213,7 @@ def sync_services_state(fqdn):
+     """
+     result = api.Command.server_role_find(
+         server_server=fqdn,
+-        role_servrole='IPA master',
++        role_servrole=u'IPA master',
+         status=HIDDEN
+     )
+     if result['count']:
+-- 
+2.20.1
+

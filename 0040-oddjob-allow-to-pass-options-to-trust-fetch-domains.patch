@@ -1,0 +1,286 @@
+From 12a079a0b599cf192c4bee8bcc37f1824f82539e Mon Sep 17 00:00:00 2001
+From: Alexander Bokovoy <abokovoy@redhat.com>
+Date: Sun, 31 Mar 2019 10:39:05 +0300
+Subject: [PATCH] oddjob: allow to pass options to trust-fetch-domains
+
+Refactor com.redhat.idm.trust-fetch.domains oddjob helper to allow
+passing administrative credentials and a domain controller to talk to.
+
+This approach allows to avoid rediscovering a domain controller in case
+a user actually specified the domain controller when establishing trust.
+
+It also allows to pass through admin credentials if user decides to do
+so. The latter will be used later to allow updating trust topology in a
+similar oddjob helper.
+
+Resolves: https://pagure.io/freeipa/issue/7895
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+(cherry picked from commit de4a9875d410c68ae4f9602b70c753a11034b31b)
+---
+ API.txt                                       |  4 +-
+ VERSION.m4                                    |  4 +-
+ .../oddjob/com.redhat.idm.trust-fetch-domains | 91 +++++++++++--------
+ .../etc/oddjobd.conf.d/oddjobd-ipa-trust.conf |  2 +-
+ ipaserver/plugins/trust.py                    | 31 ++++++-
+ 5 files changed, 83 insertions(+), 49 deletions(-)
+
+diff --git a/API.txt b/API.txt
+index 222e30915ccc1fb4a6f3ce228669453f346fdde4..325df7a6ef48afbc438bcc1f7b8ca64efb229886 100644
+--- a/API.txt
++++ b/API.txt
+@@ -5765,10 +5765,12 @@ output: Output('result', type=[<type 'dict'>])
+ output: Output('summary', type=[<type 'unicode'>, <type 'NoneType'>])
+ output: ListOfPrimaryKeys('value')
+ command: trust_fetch_domains/1
+-args: 1,5,4
++args: 1,7,4
+ arg: Str('cn', cli_name='realm')
+ option: Flag('all', autofill=True, cli_name='all', default=False)
+ option: Flag('raw', autofill=True, cli_name='raw', default=False)
++option: Str('realm_admin?', cli_name='admin')
++option: Password('realm_passwd?', cli_name='password', confirm=False)
+ option: Str('realm_server?', cli_name='server')
+ option: Flag('rights', autofill=True, default=False)
+ option: Str('version?')
+diff --git a/VERSION.m4 b/VERSION.m4
+index b1425626ca00ffbcc902c66685cb27cbb2136539..da391d8bd4dad6ae8e7418e6af54a9d481133cc8 100644
+--- a/VERSION.m4
++++ b/VERSION.m4
+@@ -82,8 +82,8 @@ define(IPA_DATA_VERSION, 20100614120000)
+ #                                                      #
+ ########################################################
+ define(IPA_API_VERSION_MAJOR, 2)
+-define(IPA_API_VERSION_MINOR, 230)
+-# Last change: Added `automember-find-orphans' command
++define(IPA_API_VERSION_MINOR, 231)
++# Last change: Added admin creds to trust-fetch-domains
+ 
+ 
+ ########################################################
+diff --git a/install/oddjob/com.redhat.idm.trust-fetch-domains b/install/oddjob/com.redhat.idm.trust-fetch-domains
+index 30150793d98011d153081477c0856618e1454ba5..1e90759e0e6e7be36745ec12f4478bfec0f0358e 100755
+--- a/install/oddjob/com.redhat.idm.trust-fetch-domains
++++ b/install/oddjob/com.redhat.idm.trust-fetch-domains
+@@ -14,11 +14,31 @@ import pwd
+ import six
+ import gssapi
+ 
+-from ipalib.install.kinit import kinit_keytab
++from ipalib.install.kinit import kinit_keytab, kinit_password
+ 
+ if six.PY3:
+     unicode = str
+ 
++
++def parse_options():
++    usage = "%prog <trusted domain name>\n"
++    parser = config.IPAOptionParser(usage=usage,
++                                    formatter=config.IPAFormatter())
++
++    parser.add_option("-d", "--debug", action="store_true", dest="debug",
++                      help="Display debugging information")
++    parser.add_option("-s", "--server", action="store", dest="server",
++                      help="Domain controller for the Active Directory domain (optional)")
++    parser.add_option("-a", "--admin", action="store", dest="admin",
++                      help="Active Directory administrator (optional)")
++    parser.add_option("-p", "--password", action="store", dest="password",
++                      help="Display debugging information")
++
++    options, args = parser.parse_args()
++    safe_options = parser.get_safe_opts(options)
++
++    return safe_options, options, args
++
+ def retrieve_keytab(api, ccache_name, oneway_keytab_name, oneway_principal):
+     getkeytab_args = ["/usr/sbin/ipa-getkeytab",
+                       "-s", api.env.host,
+@@ -40,7 +60,7 @@ def retrieve_keytab(api, ccache_name, oneway_keytab_name, oneway_principal):
+         pass
+ 
+ 
+-def get_forest_root_domain(api_instance, trusted_domain):
++def get_forest_root_domain(api_instance, trusted_domain, server=None):
+     """
+     retrieve trusted forest root domain for given domain name
+ 
+@@ -53,25 +73,11 @@ def get_forest_root_domain(api_instance, trusted_domain):
+     flatname = trustconfig_show()['result']['ipantflatname'][0]
+ 
+     remote_domain = dcerpc.retrieve_remote_domain(
+-        api_instance.env.host, flatname, trusted_domain)
++        api_instance.env.host, flatname, trusted_domain,
++        realm_server=server)
+ 
+     return remote_domain.info['dns_forest']
+ 
+-
+-def parse_options():
+-    usage = "%prog <trusted domain name>\n"
+-    parser = config.IPAOptionParser(usage=usage,
+-                                    formatter=config.IPAFormatter())
+-
+-    parser.add_option("-d", "--debug", action="store_true", dest="debug",
+-                      help="Display debugging information")
+-
+-    options, args = parser.parse_args()
+-    safe_options = parser.get_safe_opts(options)
+-
+-    return safe_options, options, args
+-
+-
+ if not is_ipa_configured():
+     # LSB status code 6: program is not configured
+     raise ScriptError("IPA is not configured " +
+@@ -153,32 +159,37 @@ trusted_domain = trusted_domain_entry.single_value.get('cn').lower()
+ # At this point if we didn't find trusted forest name, an exception will be raised
+ # and script will quit. This is actually intended.
+ 
+-oneway_keytab_name = '/var/lib/sss/keytabs/' + trusted_domain + '.keytab'
+-oneway_principal = str('%s$@%s' % (own_trust_flatname, trusted_domain.upper()))
++if not (options.admin and options.password):
++    oneway_keytab_name = '/var/lib/sss/keytabs/' + trusted_domain + '.keytab'
++    oneway_principal = str('%s$@%s' % (own_trust_flatname, trusted_domain.upper()))
+ 
+-# If keytab does not exist, retrieve it
+-if not os.path.isfile(oneway_keytab_name):
+-    retrieve_keytab(api, ccache_name, oneway_keytab_name, oneway_principal)
++    # If keytab does not exist, retrieve it
++    if not os.path.isfile(oneway_keytab_name):
++        retrieve_keytab(api, ccache_name, oneway_keytab_name, oneway_principal)
+ 
+-try:
+-    have_ccache = False
+     try:
+-        # The keytab may have stale key material (from older trust-add run)
+-        cred = kinit_keytab(oneway_principal, oneway_keytab_name, oneway_ccache_name)
+-        if cred.lifetime > 0:
+-            have_ccache = True
+-    except gssapi.exceptions.ExpiredCredentialsError:
+-        pass
+-    if not have_ccache:
++        have_ccache = False
++        try:
++            # The keytab may have stale key material (from older trust-add run)
++            cred = kinit_keytab(oneway_principal, oneway_keytab_name, oneway_ccache_name)
++            if cred.lifetime > 0:
++                have_ccache = True
++        except gssapi.exceptions.ExpiredCredentialsError:
++            pass
++        if not have_ccache:
++            if os.path.exists(oneway_ccache_name):
++                os.unlink(oneway_ccache_name)
++            kinit_keytab(oneway_principal, oneway_keytab_name, oneway_ccache_name)
++    except gssapi.exceptions.GSSError:
++        # If there was failure on using keytab, assume it is stale and retrieve again
++        retrieve_keytab(api, ccache_name, oneway_keytab_name, oneway_principal)
+         if os.path.exists(oneway_ccache_name):
+             os.unlink(oneway_ccache_name)
+         kinit_keytab(oneway_principal, oneway_keytab_name, oneway_ccache_name)
+-except gssapi.exceptions.GSSError:
+-    # If there was failure on using keytab, assume it is stale and retrieve again
+-    retrieve_keytab(api, ccache_name, oneway_keytab_name, oneway_principal)
+-    if os.path.exists(oneway_ccache_name):
+-        os.unlink(oneway_ccache_name)
+-    kinit_keytab(oneway_principal, oneway_keytab_name, oneway_ccache_name)
++else:
++    cred = kinit_password(options.admin, options.password,
++                          oneway_ccache_name,
++                          canonicalize=True, enterprise=True)
+ 
+ # We are done: we have ccache with TDO credentials and can fetch domains
+ ipa_domain = api.env.domain
+@@ -186,9 +197,9 @@ os.environ['KRB5CCNAME'] = oneway_ccache_name
+ 
+ # retrieve the forest root domain name and contact it to retrieve trust
+ # topology info
+-forest_root = get_forest_root_domain(api, trusted_domain)
++forest_root = get_forest_root_domain(api, trusted_domain, server=options.server)
+ 
+-domains = dcerpc.fetch_domains(api, ipa_domain, forest_root, creds=True)
++domains = dcerpc.fetch_domains(api, ipa_domain, forest_root, creds=True, server=options.server)
+ trust_domain_object = api.Command.trust_show(trusted_domain, raw=True)['result']
+ trust.add_new_domains_from_trust(api, None, trust_domain_object, domains)
+ 
+diff --git a/install/oddjob/etc/oddjobd.conf.d/oddjobd-ipa-trust.conf b/install/oddjob/etc/oddjobd.conf.d/oddjobd-ipa-trust.conf
+index 630a4e6cd4c0d3ed9ce48bf9b882b7d630f6bbf3..9f3f168a51abfdd1cb7cb8b76221bb4ec806859c 100644
+--- a/install/oddjob/etc/oddjobd.conf.d/oddjobd-ipa-trust.conf
++++ b/install/oddjob/etc/oddjobd.conf.d/oddjobd-ipa-trust.conf
+@@ -11,7 +11,7 @@
+       <interface name="com.redhat.idm.trust">
+         <method name="fetch_domains">
+           <helper exec="/usr/libexec/ipa/oddjob/com.redhat.idm.trust-fetch-domains"
+-		  arguments="1"
++		  arguments="30"
+                   argument_passing_method="cmdline"
+ 		  prepend_user_name="no"/>
+         </method>
+diff --git a/ipaserver/plugins/trust.py b/ipaserver/plugins/trust.py
+index 91cd1387ce058f34c2319676767d9e50f9b46ed1..bb9e0fe3303989c49cf339df6e5aeeb4ce1435cf 100644
+--- a/ipaserver/plugins/trust.py
++++ b/ipaserver/plugins/trust.py
+@@ -418,9 +418,19 @@ def add_range(myapi, trustinstance, range_name, dom_sid, *keys, **options):
+     return range_type, range_size, base_id
+ 
+ 
+-def fetch_trusted_domains_over_dbus(myapi, forest_name):
++def fetch_trusted_domains_over_dbus(myapi, *keys, **options):
+     if not _bindings_installed:
+         return
++
++    forest_name = keys[0]
++    method_options = []
++    if 'realm_server' in options:
++        method_options.extend(['--server', options['realm_server']])
++    if 'realm_admin' in options:
++        method_options.extend(['--admin', options['realm_admin']])
++    if 'realm_passwd' in options:
++        method_options.extend(['--password', options['realm_passwd']])
++
+     # Calling oddjobd-activated service via DBus has some quirks:
+     # - Oddjobd registers multiple canonical names on the same address
+     # - python-dbus only follows name owner changes when mainloop is in use
+@@ -436,7 +446,8 @@ def fetch_trusted_domains_over_dbus(myapi, forest_name):
+         fetch_domains_method = intf.get_dbus_method(
+                 'fetch_domains',
+                 dbus_interface=DBUS_IFACE_TRUST)
+-        (_ret, _stdout, _stderr) = fetch_domains_method(forest_name)
++        (_ret, _stdout, _stderr) = fetch_domains_method(
++            [forest_name] + method_options)
+     except dbus.DBusException as e:
+         logger.error('Failed to call %s.fetch_domains helper.'
+                      'DBus exception is %s.', DBUS_IFACE_TRUST, str(e))
+@@ -1760,10 +1771,20 @@ class trust_fetch_domains(LDAPRetrieve):
+ 
+     has_output = output.standard_list_of_entries
+     takes_options = LDAPRetrieve.takes_options + (
++        Str('realm_admin?',
++            cli_name='admin',
++            label=_("Active Directory domain administrator"),
++            ),
++        Password('realm_passwd?',
++                 cli_name='password',
++                 label=_("Active Directory domain administrator's password"),
++                 confirm=False,
++                 ),
+         Str('realm_server?',
+             cli_name='server',
+-            label=_('Domain controller for the Active Directory domain (optional)'),
+-        ),
++            label=_('Domain controller for the Active Directory domain '
++                    '(optional)'),
++            ),
+     )
+ 
+     def execute(self, *keys, **options):
+@@ -1784,7 +1805,7 @@ class trust_fetch_domains(LDAPRetrieve):
+         # With privilege separation we also cannot authenticate as
+         # HTTP/ principal because we have no access to its key material.
+         # Thus, we'll use DBus call out to oddjobd helper in all cases
+-        fetch_trusted_domains_over_dbus(self.api, keys[0])
++        fetch_trusted_domains_over_dbus(self.api, *keys, **options)
+         result['summary'] = unicode(_('List of trust domains successfully '
+                                       'refreshed. Use trustdomain-find '
+                                       'command to list them.'))
+-- 
+2.20.1
+

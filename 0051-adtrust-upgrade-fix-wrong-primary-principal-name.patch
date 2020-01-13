@@ -1,0 +1,97 @@
+From 5b9d7daf27cb10101432e8a25c364dcbe92b37a4 Mon Sep 17 00:00:00 2001
+From: Alexander Bokovoy <abokovoy@redhat.com>
+Date: Tue, 25 Jun 2019 15:22:57 +0300
+Subject: [PATCH] adtrust upgrade: fix wrong primary principal name
+
+Upgrade code had Kerberos principal names mixed up: instead of creating
+krbtgt/LOCAL-FLAT@REMOTE and marking LOCAL-FLAT$@REMOTE as an alias to
+it, it created LOCAL-FLAT$@REMOTE Kerberos principal and marked
+krbtgt/LOCAL-FLAT@REMOTE as an alias.
+
+This differs from what Active Directory expects and what is created by
+ipasam plugin when trust is established. When upgrading such deployment,
+an upgrade code then unexpectedly failed.
+
+Resolves: https://pagure.io/freeipa/issue/7992
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+---
+ daemons/ipa-sam/ipa_sam.c                        | 12 +++++++-----
+ .../adtrust/oneway-trust-with-shared-secret.md   | 16 +++++++++-------
+ ipaserver/install/plugins/adtrust.py             |  4 ++--
+ 3 files changed, 18 insertions(+), 14 deletions(-)
+
+diff --git a/daemons/ipa-sam/ipa_sam.c b/daemons/ipa-sam/ipa_sam.c
+index 3cf878c3f99774f7715f776c31d70e2950f9451c..2251f3ddcd9d5549d12b3e411245b00395c6b0d9 100644
+--- a/daemons/ipa-sam/ipa_sam.c
++++ b/daemons/ipa-sam/ipa_sam.c
+@@ -2011,11 +2011,13 @@ static bool handle_cross_realm_princs(struct ipasam_private *ipasam_state,
+ 							 pwd_outgoing, trusted_dn,
+ 							 KRB_PRINC_CREATE_DEFAULT);
+ 
+-				/* Second: <OUR FLATNAME$>@<REMOTE REALM> is only used
+-				 * for SSSD to be able to talk to AD DCs but it has to
+-				 * have canonical name set to <OUR FLATNAME>$ because
+-				 * this is the salt used by AD DCs when using this
+-				 * principal, otherwise authentication will fail.
++				/* Second: krbtgt/<OUR FLATNAME>@<REMOTE REALM>
++				 * is only used for SSSD to be able to talk to
++				 * AD DCs but it has to have canonical name set
++				 * to krbtgt/<OUR FLATNAME> and alias it to
++				 * <OUR FLATNAME$> because it is the salt used
++				 * by AD DCs when using this principal,
++				 * otherwise authentication will fail.
+ 				 *
+ 				 * *disable* use of this principal on our side as it is
+ 				 * only used to retrieve trusted domain credentials by
+diff --git a/doc/designs/adtrust/oneway-trust-with-shared-secret.md b/doc/designs/adtrust/oneway-trust-with-shared-secret.md
+index dc58a08941acea447f9234107ebcba775351089e..09a940e34bb43a6e46beb85392c94423d2bfccd3 100644
+--- a/doc/designs/adtrust/oneway-trust-with-shared-secret.md
++++ b/doc/designs/adtrust/oneway-trust-with-shared-secret.md
+@@ -131,16 +131,18 @@ and `LOCAL-FLAT` is the NetBIOS name of the FreeIPA primary domain (e.g.
+   REMOTE-FLAT$@LOCAL | Trusted domain object account for the Active Directory forest root domain
+   krbtgt/REMOTE-FLAT@LOCAL | Alias to REMOTE-FLAT$ TDO
+   krbtgt/LOCAL@REMOTE | Cross-realm principal representing IPA domain in Active Directory forest to allow crross-realm TGT issuance from IPA KDC side
+-  LOCAL-FLAT$@REMOTE | Trusted domain object account for IPA domain in Active Directory forest
+-  krbtgt/LOCAL-FLAT@REMOTE | Alias to LOCAL-FLAT$
++  krbtgt/LOCAL-FLAT@REMOTE | Trusted domain object account for IPA domain in Active Directory forest
++  LOCAL-FLAT$@REMOTE | Alias to krbtgt/LOCAL-FLAT@REMOTE
+ 
+ For inbound trust `ipasam` module creates following principals:
+   * `krbtgt/LOCAL@REMOTE`, enabled by default
+-  * `LOCAL-FLAT$@REMOTE`, used by SSSD to talk to Active Directory domain
+-    controllers, with canonical name set to `LOCAL-FLAT$` because Kerberos KDC
+-    must use this salt when issuing tickets for this principal. The use of this
+-    principal is disabled on IPA side (IPA KDC does not issue tickets in this name)
+-    --- we only retrieve a keytab for the principal in SSSD.
++  * `krbtgt/LOCAL-FLAT@REMOTE`, used by SSSD to talk to Active Directory domain
++    controllers, with canonical name set to `krbtgt/LOCAL-FLAT@REMOTE` because
++    Kerberos KDC must use this salt when issuing tickets for this principal. The
++    use of this principal is disabled on IPA side (IPA KDC does not issue tickets
++    in this name) --- we only retrieve a keytab for the principal in SSSD. SSSD
++    retrieves a keytab for this principal using `LOCAL-FLAT$@REMOTE` Principal
++    name.
+ 
+ For outbound trust `ipasam` module creates following principals:
+   * `krbtgt/REMOTE@LOCAL`, enabled by default.
+diff --git a/ipaserver/install/plugins/adtrust.py b/ipaserver/install/plugins/adtrust.py
+index 55df5cd01fd0f585d5955e700ccf20c7fc9a747f..f810522b236d8c04f4a417aac8fd3717563c358e 100644
+--- a/ipaserver/install/plugins/adtrust.py
++++ b/ipaserver/install/plugins/adtrust.py
+@@ -680,12 +680,12 @@ class update_tdo_to_new_layout(Updater):
+                     trust_principal, t_realm)
+                 continue
+ 
+-            # 4. Create <OUR FLATNAME$>@<REMOTE REALM>, disabled
++            # 4. Create krbtgt/<OUR FLATNAME>@<REMOTE REALM>, disabled
+             nbt_principal = self.nbt_principal_template.format(
+                 nbt=our_nbt_name, realm=t_realm)
+             tgt_principal = self.tgt_principal_template.format(
+                 remote=our_nbt_name, local=t_realm)
+-            self.set_krb_principal([nbt_principal, tgt_principal],
++            self.set_krb_principal([tgt_principal, nbt_principal],
+                                    passwd_incoming,
+                                    t_dn,
+                                    flags=self.KRB_PRINC_CREATE_DEFAULT |
+-- 
+2.20.1
+

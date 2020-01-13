@@ -1,0 +1,89 @@
+From 474c13d1543608c8c4da06957295215bbcd5b67c Mon Sep 17 00:00:00 2001
+From: Fraser Tweedale <ftweedal@redhat.com>
+Date: Fri, 22 Mar 2019 13:37:45 +1100
+Subject: [PATCH] Extract ca_renewal cert update subroutine
+
+When the CA renewal master renews certificates that are shared
+across CA replicas, it puts them in LDAP for the other CA replicas
+to see.  The code to create/update these entries lives in the
+dogtag-ipa-ca-renew-agent renewal helper, but it will be useful for
+the ipa-cert-fix program too.  Extract it to a subroutine in the
+cainstance module.
+
+Part of: https://pagure.io/freeipa/issue/7885
+
+Reviewed-By: Florence Blanc-Renaud <flo@redhat.com>
+---
+ .../dogtag-ipa-ca-renew-agent-submit          | 16 +-----------
+ ipaserver/install/cainstance.py               | 26 +++++++++++++++++++
+ 2 files changed, 27 insertions(+), 15 deletions(-)
+
+diff --git a/install/certmonger/dogtag-ipa-ca-renew-agent-submit b/install/certmonger/dogtag-ipa-ca-renew-agent-submit
+index c33404c18c0022af6b801d25cac1eb0bec019cdf..c2ba9cb842ba835948925a8e415d1e25fe8ee139 100755
+--- a/install/certmonger/dogtag-ipa-ca-renew-agent-submit
++++ b/install/certmonger/dogtag-ipa-ca-renew-agent-submit
+@@ -270,23 +270,9 @@ def store_cert(**kwargs):
+         return (REJECTED, "New certificate requests not supported")
+     cert = x509.load_pem_x509_certificate(cert.encode('ascii'))
+ 
+-    dn = DN(('cn', nickname), ('cn', 'ca_renewal'),
+-            ('cn', 'ipa'), ('cn', 'etc'), api.env.basedn)
+     try:
+         with ldap_connect() as conn:
+-            try:
+-                entry = conn.get_entry(dn, ['usercertificate'])
+-                entry['usercertificate'] = [cert]
+-                conn.update_entry(entry)
+-            except errors.NotFound:
+-                entry = conn.make_entry(
+-                    dn,
+-                    objectclass=['top', 'pkiuser', 'nscontainer'],
+-                    cn=[nickname],
+-                    usercertificate=[cert])
+-                conn.add_entry(entry)
+-            except errors.EmptyModlist:
+-                pass
++            cainstance.update_ca_renewal_entry(conn, nickname, cert)
+     except Exception as e:
+         attempts += 1
+         if attempts < 10:
+diff --git a/ipaserver/install/cainstance.py b/ipaserver/install/cainstance.py
+index 2946b5cc2b4b8b708a060aa79d1b7ab0e7b4e651..527ad0a1f492050d452336105cc5cf3c645af693 100644
+--- a/ipaserver/install/cainstance.py
++++ b/ipaserver/install/cainstance.py
+@@ -1711,6 +1711,32 @@ def update_authority_entry(cert):
+     return __update_entry_from_cert(make_filter, make_entry, cert)
+ 
+ 
++def update_ca_renewal_entry(conn, nickname, cert):
++    """
++    Update the ca_renewal entry for the given nickname.
++
++    :param conn: A *connected* LDAP handle
++    :param nickname: NSSDB nickname
++    :param cert: python-cryptography X509Certificate
++
++    """
++    dn = DN(('cn', nickname), ('cn', 'ca_renewal'),
++            ('cn', 'ipa'), ('cn', 'etc'), api.env.basedn)
++    try:
++        entry = conn.get_entry(dn, ['usercertificate'])
++        entry['usercertificate'] = [cert]
++        conn.update_entry(entry)
++    except errors.NotFound:
++        entry = conn.make_entry(
++            dn,
++            objectclass=['top', 'pkiuser', 'nscontainer'],
++            cn=[nickname],
++            usercertificate=[cert])
++        conn.add_entry(entry)
++    except errors.EmptyModlist:
++        pass
++
++
+ def ensure_ldap_profiles_container():
+     ensure_entry(
+         DN(('ou', 'certificateProfiles'), ('ou', 'ca'), ('o', 'ipaca')),
+-- 
+2.20.1
+

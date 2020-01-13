@@ -1,0 +1,37 @@
+From 8bbec6c72b759767bc19681aab9c3d3d9f091b6a Mon Sep 17 00:00:00 2001
+From: Fraser Tweedale <ftweedal@redhat.com>
+Date: Fri, 29 Mar 2019 16:04:20 +1100
+Subject: [PATCH] ipa-cert-fix: use customary exit statuses
+
+It is customary to return 2 when IPA is not configured, and 1 when
+other required bits are not installed or configured.  Update
+ipa-cert-fix exit statuses accordingly.
+
+Part of: https://pagure.io/freeipa/issue/7885
+
+Reviewed-By: Florence Blanc-Renaud <flo@redhat.com>
+---
+ ipaserver/install/ipa_cert_fix.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/ipaserver/install/ipa_cert_fix.py b/ipaserver/install/ipa_cert_fix.py
+index 3d9070eac1e7dc03840215dffeb4d73f4d3d0a47..c8ee51faea9092350c8a182ba55387ddd7b196d8 100644
+--- a/ipaserver/install/ipa_cert_fix.py
++++ b/ipaserver/install/ipa_cert_fix.py
+@@ -71,11 +71,11 @@ class IPACertFix(AdminTool):
+     def run(self):
+         if not is_ipa_configured():
+             print("IPA is not configured.")
+-            return 0  # not really an error
++            return 2
+ 
+         if not cainstance.is_ca_installed_locally():
+             print("CA is not installed on this server.")
+-            return 0  # not really an error
++            return 1
+ 
+         try:
+             ipautil.run(['pki-server', 'cert-fix', '--help'], raiseonerr=True)
+-- 
+2.20.1
+

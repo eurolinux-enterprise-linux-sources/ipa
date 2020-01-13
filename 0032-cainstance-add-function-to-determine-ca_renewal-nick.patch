@@ -1,0 +1,85 @@
+From d868e27dfe7ab9955faebf0a08be3b41971bf816 Mon Sep 17 00:00:00 2001
+From: Fraser Tweedale <ftweedal@redhat.com>
+Date: Fri, 22 Mar 2019 15:22:21 +1100
+Subject: [PATCH] cainstance: add function to determine ca_renewal nickname
+
+The ipa-cert-fix program needs to know where to put shared
+certificates.  Extract the logic that computes the nickname from
+dogtag-ipa-ca-renew-agent to new subroutine
+cainstance.get_ca_renewal_nickname().
+
+Part of: https://pagure.io/freeipa/issue/7885
+
+Reviewed-By: Florence Blanc-Renaud <flo@redhat.com>
+---
+ .../dogtag-ipa-ca-renew-agent-submit          | 16 ++----------
+ ipaserver/install/cainstance.py               | 26 +++++++++++++++++++
+ 2 files changed, 28 insertions(+), 14 deletions(-)
+
+diff --git a/install/certmonger/dogtag-ipa-ca-renew-agent-submit b/install/certmonger/dogtag-ipa-ca-renew-agent-submit
+index c2ba9cb842ba835948925a8e415d1e25fe8ee139..31b4a1b7fc23567e91f8aa9938ce4e0941a84a8c 100755
+--- a/install/certmonger/dogtag-ipa-ca-renew-agent-submit
++++ b/install/certmonger/dogtag-ipa-ca-renew-agent-submit
+@@ -85,20 +85,8 @@ def get_nickname():
+ 
+     ca_subject_dn = ca.lookup_ca_subject(api, subject_base)
+ 
+-    nickname_by_subject_dn = {
+-        DN(ca_subject_dn): 'caSigningCert cert-pki-ca',
+-        DN('CN=CA Audit', subject_base): 'auditSigningCert cert-pki-ca',
+-        DN('CN=OCSP Subsystem', subject_base): 'ocspSigningCert cert-pki-ca',
+-        DN('CN=CA Subsystem', subject_base): 'subsystemCert cert-pki-ca',
+-        DN('CN=KRA Audit', subject_base): 'auditSigningCert cert-pki-kra',
+-        DN('CN=KRA Transport Certificate', subject_base):
+-            'transportCert cert-pki-kra',
+-        DN('CN=KRA Storage Certificate', subject_base):
+-            'storageCert cert-pki-kra',
+-        DN('CN=IPA RA', subject_base): 'ipaCert',
+-    }
+-
+-    return nickname_by_subject_dn.get(DN(subject))
++    return cainstance.get_ca_renewal_nickname(
++        subject_base, ca_subject_dn, DN(subject))
+ 
+ 
+ def is_replicated():
+diff --git a/ipaserver/install/cainstance.py b/ipaserver/install/cainstance.py
+index 527ad0a1f492050d452336105cc5cf3c645af693..b4f6262b2c41e2da7992c403154a476aa3b82dd1 100644
+--- a/ipaserver/install/cainstance.py
++++ b/ipaserver/install/cainstance.py
+@@ -1711,6 +1711,32 @@ def update_authority_entry(cert):
+     return __update_entry_from_cert(make_filter, make_entry, cert)
+ 
+ 
++def get_ca_renewal_nickname(subject_base, ca_subject_dn, sdn):
++    """
++    Get the nickname for storage in the cn_renewal container.
++
++    :param subject_base: Certificate subject base
++    :param ca_subject_dn: IPA CA subject DN
++    :param sdn: Subject DN
++    :return: string, or None if nickname cannot be determined.
++
++    """
++    assert isinstance(sdn, DN)
++    nickname_by_subject_dn = {
++        DN(ca_subject_dn): 'caSigningCert cert-pki-ca',
++        DN('CN=CA Audit', subject_base): 'auditSigningCert cert-pki-ca',
++        DN('CN=OCSP Subsystem', subject_base): 'ocspSigningCert cert-pki-ca',
++        DN('CN=CA Subsystem', subject_base): 'subsystemCert cert-pki-ca',
++        DN('CN=KRA Audit', subject_base): 'auditSigningCert cert-pki-kra',
++        DN('CN=KRA Transport Certificate', subject_base):
++            'transportCert cert-pki-kra',
++        DN('CN=KRA Storage Certificate', subject_base):
++            'storageCert cert-pki-kra',
++        DN('CN=IPA RA', subject_base): 'ipaCert',
++    }
++    return nickname_by_subject_dn.get(sdn)
++
++
+ def update_ca_renewal_entry(conn, nickname, cert):
+     """
+     Update the ca_renewal entry for the given nickname.
+-- 
+2.20.1
+

@@ -1,0 +1,660 @@
+From 04f68b7354cf1268019b08885eeb3a6915f314ef Mon Sep 17 00:00:00 2001
+From: Christian Heimes <cheimes@redhat.com>
+Date: Thu, 12 Jul 2018 14:37:18 +0200
+Subject: [PATCH] Unify and simplify LDAP service discovery
+
+Move LDAP service discovery and service definitions from
+ipaserver.install to ipaserver. Simplify and unify different
+implementations in favor of a single implementation.
+
+Signed-off-by: Christian Heimes <cheimes@redhat.com>
+Reviewed-By: Thomas Woerner <twoerner@redhat.com>
+---
+ install/tools/ipa-ca-install                |   9 +-
+ install/tools/ipactl                        |   4 +-
+ ipaserver/install/cainstance.py             |   3 +-
+ ipaserver/install/ipa_kra_install.py        |  11 +-
+ ipaserver/install/opendnssecinstance.py     |   3 +-
+ ipaserver/install/server/replicainstall.py  |  18 +--
+ ipaserver/install/service.py                |  65 +----------
+ ipaserver/masters.py                        | 123 ++++++++++++++++++++
+ ipaserver/plugins/cert.py                   |  10 +-
+ ipaserver/plugins/dogtag.py                 |  99 ++++------------
+ ipaserver/servroles.py                      |   9 +-
+ ipatests/test_ipaserver/test_serverroles.py |   3 +-
+ 12 files changed, 192 insertions(+), 165 deletions(-)
+ create mode 100644 ipaserver/masters.py
+
+diff --git a/install/tools/ipa-ca-install b/install/tools/ipa-ca-install
+index f78f43d94981d29939a247f3c492c5e7340298ea..dcdbe884f15b13b92ec68a11d9f00e3e28771b42 100755
+--- a/install/tools/ipa-ca-install
++++ b/install/tools/ipa-ca-install
+@@ -34,6 +34,7 @@ from ipaserver.install.installutils import check_creds, ReplicaConfig
+ from ipaserver.install import dsinstance, ca
+ from ipaserver.install import cainstance, service
+ from ipaserver.install import custodiainstance
++from ipaserver.masters import find_providing_server
+ from ipapython import version
+ from ipalib import api
+ from ipalib.constants import DOMAIN_LEVEL_0
+@@ -211,8 +212,9 @@ def install_replica(safe_options, options, filename):
+         config.subject_base = attrs.get('ipacertificatesubjectbase')[0]
+ 
+     if config.ca_host_name is None:
+-        config.ca_host_name = \
+-            service.find_providing_server('CA', api.Backend.ldap2, api.env.ca_host)
++        config.ca_host_name = find_providing_server(
++            'CA', api.Backend.ldap2, [api.env.ca_host]
++        )
+ 
+     options.realm_name = config.realm_name
+     options.domain_name = config.domain_name
+@@ -299,7 +301,8 @@ def promote(safe_options, options, filename):
+             paths.KRB5_KEYTAB,
+             ccache)
+ 
+-        ca_host = service.find_providing_server('CA', api.Backend.ldap2)
++        ca_host = find_providing_server('CA', api.Backend.ldap2)
++
+         if ca_host is None:
+             install_master(safe_options, options)
+         else:
+diff --git a/install/tools/ipactl b/install/tools/ipactl
+index ade91f7f75dab4fdf3b7fa73d2624a7395bc2a53..2767a26d1b70337d37dbcd87c707919579fe7e29 100755
+--- a/install/tools/ipactl
++++ b/install/tools/ipactl
+@@ -224,9 +224,9 @@ def get_config(dirsrv):
+         svc_list.append([order, name])
+ 
+     ordered_list = []
+-    for (order, svc) in sorted(svc_list):
++    for order, svc in sorted(svc_list):
+         if svc in service.SERVICE_LIST:
+-            ordered_list.append(service.SERVICE_LIST[svc][0])
++            ordered_list.append(service.SERVICE_LIST[svc].systemd_name)
+     return ordered_list
+ 
+ def get_config_from_file():
+diff --git a/ipaserver/install/cainstance.py b/ipaserver/install/cainstance.py
+index e101087ac2d738eb95cc643bfb12faaf5e65f0be..f424e7cd76d24a5a633a4f4babf3e112537be92c 100644
+--- a/ipaserver/install/cainstance.py
++++ b/ipaserver/install/cainstance.py
+@@ -71,6 +71,7 @@ from ipaserver.install import replication
+ from ipaserver.install import sysupgrade
+ from ipaserver.install.dogtaginstance import DogtagInstance
+ from ipaserver.plugins import ldap2
++from ipaserver.masters import ENABLED_SERVICE
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -1304,7 +1305,7 @@ class CAInstance(DogtagInstance):
+             config = ['caRenewalMaster']
+         else:
+             config = []
+-        self._ldap_enable(u'enabledService', "CA", self.fqdn, basedn, config)
++        self._ldap_enable(ENABLED_SERVICE, "CA", self.fqdn, basedn, config)
+ 
+     def setup_lightweight_ca_key_retrieval(self):
+         if sysupgrade.get_upgrade_state('dogtag', 'setup_lwca_key_retrieval'):
+diff --git a/ipaserver/install/ipa_kra_install.py b/ipaserver/install/ipa_kra_install.py
+index b536685f5f1f3fccab07fd37aa001958e2d38420..19260ac7f23a7c6f3a6328d4f146510a186b706e 100644
+--- a/ipaserver/install/ipa_kra_install.py
++++ b/ipaserver/install/ipa_kra_install.py
+@@ -41,6 +41,7 @@ from ipaserver.install.installutils import create_replica_config
+ from ipaserver.install import dogtaginstance
+ from ipaserver.install import kra
+ from ipaserver.install.installutils import ReplicaConfig
++from ipaserver.masters import find_providing_server
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -206,8 +207,14 @@ class KRAInstaller(KRAInstall):
+                 config.subject_base = attrs.get('ipacertificatesubjectbase')[0]
+ 
+             if config.kra_host_name is None:
+-                config.kra_host_name = service.find_providing_server(
+-                    'KRA', api.Backend.ldap2, api.env.ca_host)
++                config.kra_host_name = find_providing_server(
++                    'KRA', api.Backend.ldap2, [api.env.ca_host]
++                )
++                if config.kra_host_name is None:
++                    # all CA/KRA servers are down or unreachable.
++                    raise admintool.ScriptError(
++                        "Failed to find an active KRA server!"
++                    )
+             custodia = custodiainstance.get_custodia_instance(
+                 config, custodiainstance.CustodiaModes.KRA_PEER)
+         else:
+diff --git a/ipaserver/install/opendnssecinstance.py b/ipaserver/install/opendnssecinstance.py
+index 0337bb22fea44f95ee9077423136353a991325db..d6725dff11599a8755a29b6707dc7b451258629f 100644
+--- a/ipaserver/install/opendnssecinstance.py
++++ b/ipaserver/install/opendnssecinstance.py
+@@ -15,6 +15,7 @@ from subprocess import CalledProcessError
+ from ipalib.install import sysrestore
+ from ipaserver.install import service
+ from ipaserver.install import installutils
++from ipaserver.masters import ENABLED_SERVICE
+ from ipapython.dn import DN
+ from ipapython import ipautil
+ from ipaplatform import services
+@@ -45,7 +46,7 @@ def get_dnssec_key_masters(conn):
+     filter_attrs = {
+         u'cn': u'DNSSEC',
+         u'objectclass': u'ipaConfigObject',
+-        u'ipaConfigString': [KEYMASTER, u'enabledService'],
++        u'ipaConfigString': [KEYMASTER, ENABLED_SERVICE],
+     }
+     only_masters_f = conn.make_filter(filter_attrs, rules=conn.MATCH_ALL)
+ 
+diff --git a/ipaserver/install/server/replicainstall.py b/ipaserver/install/server/replicainstall.py
+index b221e1291f973e7255263a39cfd680af1321598d..37ecbe4146fa908c30fb708037fcaa47af1a258b 100644
+--- a/ipaserver/install/server/replicainstall.py
++++ b/ipaserver/install/server/replicainstall.py
+@@ -46,6 +46,7 @@ from ipaserver.install.installutils import (
+     validate_mask)
+ from ipaserver.install.replication import (
+     ReplicationManager, replica_conn_check)
++from ipaserver.masters import find_providing_servers, find_providing_server
+ import SSSDConfig
+ from subprocess import CalledProcessError
+ 
+@@ -1257,9 +1258,10 @@ def promote_check(installer):
+         if subject_base is not None:
+             config.subject_base = DN(subject_base)
+ 
+-        # Find if any server has a CA
+-        ca_host = service.find_providing_server(
+-                'CA', conn, config.ca_host_name)
++        # Find any server with a CA
++        ca_host = find_providing_server(
++            'CA', conn, [config.ca_host_name]
++        )
+         if ca_host is not None:
+             config.ca_host_name = ca_host
+             ca_enabled = True
+@@ -1280,14 +1282,16 @@ def promote_check(installer):
+                              "custom certificates.")
+                 raise ScriptError(rval=3)
+ 
+-        kra_host = service.find_providing_server(
+-                'KRA', conn, config.kra_host_name)
++        # Find any server with a KRA
++        kra_host = find_providing_server(
++            'KRA', conn, [config.kra_host_name]
++        )
+         if kra_host is not None:
+             config.kra_host_name = kra_host
+             kra_enabled = True
+         else:
+             if options.setup_kra:
+-                logger.error("There is no KRA server in the domain, "
++                logger.error("There is no active KRA server in the domain, "
+                              "can't setup a KRA clone")
+                 raise ScriptError(rval=3)
+             kra_enabled = False
+@@ -1577,7 +1581,7 @@ def install(installer):
+     # Enable configured services and update DNS SRV records
+     service.enable_services(config.host_name)
+     api.Command.dns_update_system_records()
+-    ca_servers = service.find_providing_servers('CA', api.Backend.ldap2, api)
++    ca_servers = find_providing_servers('CA', api.Backend.ldap2, api=api)
+     api.Backend.ldap2.disconnect()
+ 
+     # Everything installed properly, activate ipa service.
+diff --git a/ipaserver/install/service.py b/ipaserver/install/service.py
+index baefc0076990e67e56dfa68da48b56f4cd55849f..a030801175491f65dc83aa9d42afdb1dfdb65b0f 100644
+--- a/ipaserver/install/service.py
++++ b/ipaserver/install/service.py
+@@ -38,34 +38,15 @@ from ipapython import kerberos
+ from ipalib import api, errors
+ from ipaplatform import services
+ from ipaplatform.paths import paths
++from ipaserver.masters import (
++    CONFIGURED_SERVICE, ENABLED_SERVICE, SERVICE_LIST
++)
+ 
+ logger = logging.getLogger(__name__)
+ 
+ if six.PY3:
+     unicode = str
+ 
+-# The service name as stored in cn=masters,cn=ipa,cn=etc. In the tuple
+-# the first value is the *nix service name, the second the start order.
+-SERVICE_LIST = {
+-    'KDC': ('krb5kdc', 10),
+-    'KPASSWD': ('kadmin', 20),
+-    'DNS': ('named', 30),
+-    'HTTP': ('httpd', 40),
+-    'KEYS': ('ipa-custodia', 41),
+-    'NTP': ('ntpd', 45),
+-    'CA': ('pki-tomcatd', 50),
+-    'KRA': ('pki-tomcatd', 51),
+-    'ADTRUST': ('smb', 60),
+-    'EXTID': ('winbind', 70),
+-    'OTPD': ('ipa-otpd', 80),
+-    'DNSKeyExporter': ('ipa-ods-exporter', 90),
+-    'DNSSEC': ('ods-enforcerd', 100),
+-    'DNSKeySync': ('ipa-dnskeysyncd', 110),
+-}
+-
+-CONFIGURED_SERVICE = u'configuredService'
+-ENABLED_SERVICE = u'enabledService'
+-
+ 
+ def print_msg(message, output_fd=sys.stdout):
+     logger.debug("%s", message)
+@@ -117,44 +98,6 @@ def add_principals_to_group(admin_conn, group, member_attr, principals):
+         pass
+ 
+ 
+-def find_providing_servers(svcname, conn, api):
+-    """
+-    Find servers that provide the given service.
+-
+-    :param svcname: The service to find
+-    :param conn: a connection to the LDAP server
+-    :return: list of host names (possibly empty)
+-
+-    """
+-    dn = DN(('cn', 'masters'), ('cn', 'ipa'), ('cn', 'etc'), api.env.basedn)
+-    query_filter = conn.make_filter({'objectClass': 'ipaConfigObject',
+-                                     'ipaConfigString': ENABLED_SERVICE,
+-                                     'cn': svcname}, rules='&')
+-    try:
+-        entries, _trunc = conn.find_entries(filter=query_filter, base_dn=dn)
+-    except errors.NotFound:
+-        return []
+-    else:
+-        return [entry.dn[1].value for entry in entries]
+-
+-
+-def find_providing_server(svcname, conn, host_name=None, api=api):
+-    """
+-    Find a server that provides the given service.
+-
+-    :param svcname: The service to find
+-    :param conn: a connection to the LDAP server
+-    :param host_name: the preferred server
+-    :return: the selected host name
+-
+-    """
+-    servers = find_providing_servers(svcname, conn, api)
+-    if len(servers) == 0:
+-        return None
+-    if host_name in servers:
+-        return host_name
+-    return servers[0]
+-
+ 
+ def case_insensitive_attr_has_value(attr, value):
+     """
+@@ -618,7 +561,7 @@ class Service(object):
+ 
+     def _ldap_enable(self, value, name, fqdn, ldap_suffix, config):
+         extra_config_opts = [
+-            ' '.join([u'startOrder', unicode(SERVICE_LIST[name][1])])
++            u'startOrder {}'.format(SERVICE_LIST[name].startorder),
+         ]
+         extra_config_opts.extend(config)
+ 
+diff --git a/ipaserver/masters.py b/ipaserver/masters.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..171c3abe0d6eea5aa6bcc642815eceae3ae885e7
+--- /dev/null
++++ b/ipaserver/masters.py
+@@ -0,0 +1,123 @@
++#
++# Copyright (C) 2018  FreeIPA Contributors see COPYING for license
++#
++"""Helpers services in for cn=masters,cn=ipa,cn=etc
++"""
++
++from __future__ import absolute_import
++
++import collections
++import logging
++import random
++
++from ipapython.dn import DN
++from ipalib import api
++from ipalib import errors
++
++logger = logging.getLogger(__name__)
++
++# constants for ipaConfigString
++CONFIGURED_SERVICE = u'configuredService'
++ENABLED_SERVICE = u'enabledService'
++
++# The service name as stored in cn=masters,cn=ipa,cn=etc. The values are:
++# 0: systemd service name
++# 1: start order for system service
++# 2: LDAP server entry CN, also used as SERVICE_LIST key
++service_definition = collections.namedtuple(
++    "service_definition",
++    "systemd_name startorder service_entry"
++)
++
++SERVICES = [
++    service_definition('krb5kdc', 10, 'KDC'),
++    service_definition('kadmin', 20, 'KPASSWD'),
++    service_definition('named', 30, 'DNS'),
++    service_definition('httpd', 40, 'HTTP'),
++    service_definition('ipa-custodia', 41, 'KEYS'),
++    service_definition('ntpd', 45, 'NTP'),
++    service_definition('pki-tomcatd', 50, 'CA'),
++    service_definition('pki-tomcatd', 51, 'KRA'),
++    service_definition('smb', 60, 'ADTRUST'),
++    service_definition('winbind', 70, 'EXTID'),
++    service_definition('ipa-otpd', 80, 'OTPD'),
++    service_definition('ipa-ods-exporter', 90, 'DNSKeyExporter'),
++    service_definition('ods-enforcerd', 100, 'DNSSEC'),
++    service_definition('ipa-dnskeysyncd', 110, 'DNSKeySync'),
++]
++
++SERVICE_LIST = {s.service_entry: s for s in SERVICES}
++
++
++def find_providing_servers(svcname, conn=None, preferred_hosts=(), api=api):
++    """Find servers that provide the given service.
++
++    :param svcname: The service to find
++    :param preferred_hosts: preferred servers
++    :param conn: a connection to the LDAP server
++    :param api: ipalib.API instance
++    :return: list of host names in randomized order (possibly empty)
++
++    Preferred servers are moved to the front of the list if and only if they
++    are found as providing servers.
++    """
++    assert isinstance(preferred_hosts, (tuple, list))
++    if svcname not in SERVICE_LIST:
++        raise ValueError("Unknown service '{}'.".format(svcname))
++    if conn is None:
++        conn = api.Backend.ldap2
++
++    dn = DN(api.env.container_masters, api.env.basedn)
++    query_filter = conn.make_filter(
++        {
++            'objectClass': 'ipaConfigObject',
++            'ipaConfigString': ENABLED_SERVICE,
++            'cn': svcname
++        },
++        rules='&'
++    )
++    try:
++        entries, _trunc = conn.find_entries(
++            filter=query_filter,
++            attrs_list=[],
++            base_dn=dn
++        )
++    except errors.NotFound:
++        return []
++
++    # unique list of host names, DNS is case insensitive
++    servers = list(set(entry.dn[1].value.lower() for entry in entries))
++    # shuffle the list like DNS SRV would randomize it
++    random.shuffle(servers)
++    # Move preferred hosts to front
++    for host_name in reversed(preferred_hosts):
++        host_name = host_name.lower()
++        try:
++            servers.remove(host_name)
++        except ValueError:
++            # preferred server not found, log and ignore
++            logger.warning(
++                "Lookup failed: Preferred host %s does not provide %s.",
++                host_name, svcname
++            )
++        else:
++            servers.insert(0, host_name)
++    return servers
++
++
++def find_providing_server(svcname, conn=None, preferred_hosts=(), api=api):
++    """Find a server that provides the given service.
++
++    :param svcname: The service to find
++    :param conn: a connection to the LDAP server
++    :param host_name: the preferred server
++    :param api: ipalib.API instance
++    :return: the selected host name or None
++    """
++    servers = find_providing_servers(
++        svcname, conn=conn, preferred_hosts=preferred_hosts, api=api
++    )
++    if not servers:
++        return None
++    else:
++        return servers[0]
+diff --git a/ipaserver/plugins/cert.py b/ipaserver/plugins/cert.py
+index da77f507cb2307eeec63acd0ab9d58c985ea8fe2..ff750e9d38ff98e0e1fa1c2eee5a3d0719da94bf 100644
+--- a/ipaserver/plugins/cert.py
++++ b/ipaserver/plugins/cert.py
+@@ -55,6 +55,7 @@ from ipalib import output
+ from ipapython import dnsutil, kerberos
+ from ipapython.dn import DN
+ from ipaserver.plugins.service import normalize_principal, validate_realm
++from ipaserver.masters import ENABLED_SERVICE, CONFIGURED_SERVICE
+ 
+ try:
+     import pyhbac
+@@ -297,19 +298,14 @@ def caacl_check(principal, ca, profile_id):
+ def ca_kdc_check(api_instance, hostname):
+     master_dn = api_instance.Object.server.get_dn(unicode(hostname))
+     kdc_dn = DN(('cn', 'KDC'), master_dn)
+-
++    wanted = {ENABLED_SERVICE, CONFIGURED_SERVICE}
+     try:
+         kdc_entry = api_instance.Backend.ldap2.get_entry(
+             kdc_dn, ['ipaConfigString'])
+-
+-        ipaconfigstring = {val.lower() for val in kdc_entry['ipaConfigString']}
+-
+-        if 'enabledservice' not in ipaconfigstring \
+-                and 'configuredservice' not in ipaconfigstring:
++        if not wanted.intersection(kdc_entry['ipaConfigString']):
+             raise errors.NotFound(
+                 reason=_("enabledService/configuredService not in "
+                          "ipaConfigString kdc entry"))
+-
+     except errors.NotFound:
+         raise errors.ACIError(
+             info=_("Host '%(hostname)s' is not an active KDC")
+diff --git a/ipaserver/plugins/dogtag.py b/ipaserver/plugins/dogtag.py
+index 5a44f00c583cd4bae8211a511f907c4e179bb3f6..17e2225688c0c3878ef22e5979c65e30f971b5b3 100644
+--- a/ipaserver/plugins/dogtag.py
++++ b/ipaserver/plugins/dogtag.py
+@@ -255,6 +255,7 @@ from ipalib import Backend, api
+ from ipapython.dn import DN
+ import ipapython.cookie
+ from ipapython import dogtag, ipautil, certdb
++from ipaserver.masters import find_providing_server
+ 
+ if api.env.in_server:
+     import pki
+@@ -1208,56 +1209,6 @@ def parse_updateCRL_xml(doc):
+     return response
+ 
+ 
+-def host_has_service(host, ldap2, service='CA'):
+-    """
+-    :param host: A host which might be a master for a service.
+-    :param ldap2: connection to the local database
+-    :param service: The service for which the host might be a master.
+-    :return:   (true, false)
+-
+-    Check if a specified host is a master for a specified service.
+-    """
+-    base_dn = DN(('cn', host), ('cn', 'masters'), ('cn', 'ipa'),
+-                 ('cn', 'etc'), api.env.basedn)
+-    filter_attrs = {
+-        'objectClass': 'ipaConfigObject',
+-        'cn': service,
+-        'ipaConfigString': 'enabledService',
+-        }
+-    query_filter = ldap2.make_filter(filter_attrs, rules='&')
+-    try:
+-        ent, _trunc = ldap2.find_entries(filter=query_filter, base_dn=base_dn)
+-        if len(ent):
+-            return True
+-    except Exception:
+-        pass
+-    return False
+-
+-
+-def select_any_master(ldap2, service='CA'):
+-    """
+-    :param ldap2: connection to the local database
+-    :param service: The service for which we're looking for a master.
+-    :return:   host as str
+-
+-    Select any host which is a master for a specified service.
+-    """
+-    base_dn = DN(('cn', 'masters'), ('cn', 'ipa'), ('cn', 'etc'),
+-                  api.env.basedn)
+-    filter_attrs = {
+-         'objectClass': 'ipaConfigObject',
+-         'cn': service,
+-         'ipaConfigString': 'enabledService',}
+-    query_filter = ldap2.make_filter(filter_attrs, rules='&')
+-    try:
+-        ent, _trunc = ldap2.find_entries(filter=query_filter, base_dn=base_dn)
+-        if len(ent):
+-            entry = random.choice(ent)
+-            return entry.dn[1].value
+-    except Exception:
+-        pass
+-    return None
+-
+ #-------------------------------------------------------------------------------
+ 
+ from ipalib import Registry, errors, SkipPluginModule
+@@ -1265,7 +1216,6 @@ if api.env.ra_plugin != 'dogtag':
+     # In this case, abort loading this plugin module...
+     raise SkipPluginModule(reason='dogtag not selected as RA plugin')
+ import os
+-import random
+ from ipaserver.plugins import rabase
+ from ipalib.constants import TYPE_ERROR
+ from ipalib import _
+@@ -1330,17 +1280,19 @@ class RestClient(Backend):
+         if self._ca_host is not None:
+             return self._ca_host
+ 
+-        ldap2 = self.api.Backend.ldap2
+-        if host_has_service(api.env.ca_host, ldap2, "CA"):
+-            object.__setattr__(self, '_ca_host', api.env.ca_host)
+-        elif api.env.host != api.env.ca_host:
+-            if host_has_service(api.env.host, ldap2, "CA"):
+-                object.__setattr__(self, '_ca_host', api.env.host)
+-        else:
+-            object.__setattr__(self, '_ca_host', select_any_master(ldap2))
+-        if self._ca_host is None:
+-            object.__setattr__(self, '_ca_host', api.env.ca_host)
+-        return self._ca_host
++        preferred = [api.env.ca_host]
++        if api.env.host != api.env.ca_host:
++            preferred.append(api.env.host)
++        ca_host = find_providing_server(
++            'CA', conn=self.api.Backend.ldap2, preferred_hosts=preferred,
++            api=self.api
++        )
++        if ca_host is None:
++            # TODO: need during installation, CA is not yet set as enabled
++            ca_host = api.env.ca_host
++        # object is locked, need to use __setattr__()
++        object.__setattr__(self, '_ca_host', ca_host)
++        return ca_host
+ 
+     def __enter__(self):
+         """Log into the REST API"""
+@@ -2082,9 +2034,7 @@ class kra(Backend):
+     """
+ 
+     def __init__(self, api, kra_port=443):
+-
+         self.kra_port = kra_port
+-
+         super(kra, self).__init__(api)
+ 
+     @property
+@@ -2095,17 +2045,18 @@ class kra(Backend):
+ 
+         Select our KRA host.
+         """
+-        ldap2 = self.api.Backend.ldap2
+-        if host_has_service(api.env.ca_host, ldap2, "KRA"):
+-            return api.env.ca_host
++        preferred = [api.env.ca_host]
+         if api.env.host != api.env.ca_host:
+-            if host_has_service(api.env.host, ldap2, "KRA"):
+-                return api.env.host
+-        host = select_any_master(ldap2, "KRA")
+-        if host:
+-            return host
+-        else:
+-            return api.env.ca_host
++            preferred.append(api.env.host)
++
++        kra_host = find_providing_server(
++            'KRA', self.api.Backend.ldap2, preferred_hosts=preferred,
++            api=self.api
++        )
++        if kra_host is None:
++            # TODO: need during installation, KRA is not yet set as enabled
++            kra_host = api.env.ca_host
++        return kra_host
+ 
+     @contextlib.contextmanager
+     def get_client(self):
+diff --git a/ipaserver/servroles.py b/ipaserver/servroles.py
+index 994a59e35bb5d3a007e3d63bb273ba9ea552407d..af4e63710136a15e1673210c3e2207658698fbb5 100644
+--- a/ipaserver/servroles.py
++++ b/ipaserver/servroles.py
+@@ -79,7 +79,7 @@ import six
+ 
+ from ipalib import _, errors
+ from ipapython.dn import DN
+-
++from ipaserver.masters import ENABLED_SERVICE
+ 
+ if six.PY3:
+     unicode = str
+@@ -483,11 +483,8 @@ class ServiceBasedRole(BaseServerRole):
+         :param entry: LDAPEntry of the service
+         :returns: True if the service entry is enabled, False otherwise
+         """
+-        enabled_value = 'enabledservice'
+-        ipaconfigstring_values = set(
+-            e.lower() for e in entry.get('ipaConfigString', []))
+-
+-        return enabled_value in ipaconfigstring_values
++        ipaconfigstring_values = set(entry.get('ipaConfigString', []))
++        return ENABLED_SERVICE in ipaconfigstring_values
+ 
+     def _get_services_by_masters(self, entries):
+         """
+diff --git a/ipatests/test_ipaserver/test_serverroles.py b/ipatests/test_ipaserver/test_serverroles.py
+index 76f1378ed5a94069cdef918d577e3658b78ecc43..e1bf0254dddfe03ade4fe72419b609de8e95b79a 100644
+--- a/ipatests/test_ipaserver/test_serverroles.py
++++ b/ipatests/test_ipaserver/test_serverroles.py
+@@ -16,6 +16,7 @@ import pytest
+ from ipaplatform.paths import paths
+ from ipalib import api, create_api, errors
+ from ipapython.dn import DN
++from ipaserver.masters import ENABLED_SERVICE
+ 
+ pytestmark = pytest.mark.needs_ipaapi
+ 
+@@ -25,7 +26,7 @@ def _make_service_entry(ldap_backend, dn, enabled=True, other_config=None):
+         'objectClass': ['top', 'nsContainer', 'ipaConfigObject'],
+     }
+     if enabled:
+-        mods.update({'ipaConfigString': ['enabledService']})
++        mods.update({'ipaConfigString': [ENABLED_SERVICE]})
+ 
+     if other_config is not None:
+         mods.setdefault('ipaConfigString', [])
+-- 
+2.20.1
+

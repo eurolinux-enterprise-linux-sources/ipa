@@ -1,0 +1,390 @@
+From fc64de3f833ab63f2b2ee8984db95866b3f718a7 Mon Sep 17 00:00:00 2001
+From: Christian Heimes <cheimes@redhat.com>
+Date: Fri, 22 Mar 2019 15:14:06 +0100
+Subject: [PATCH] Add hidden replica feature
+
+A hidden replica is a replica that does not advertise its services via
+DNS SRV records, ipa-ca DNS entry, or LDAP. Clients do not auto-select a
+hidden replica, but are still free to explicitly connect to it.
+
+Fixes: https://pagure.io/freeipa/issue/7892
+Co-authored-by: Francois Cami <fcami@redhat.com>:
+Signed-off-by: Christian Heimes <cheimes@redhat.com>
+Reviewed-By: Thomas Woerner <twoerner@redhat.com>
+Reviewed-By: Francois Cami <fcami@redhat.com>
+---
+ API.txt                                    |  2 +-
+ install/tools/ipactl                       | 12 ++++-
+ ipaserver/install/server/__init__.py       |  7 +++
+ ipaserver/install/server/replicainstall.py | 11 ++++-
+ ipaserver/install/service.py               | 57 +++++++++++++++++-----
+ ipaserver/masters.py                       | 46 ++++++++++++-----
+ ipaserver/plugins/serverrole.py            |  2 +-
+ ipaserver/servroles.py                     | 27 +++++++---
+ 8 files changed, 131 insertions(+), 33 deletions(-)
+
+diff --git a/API.txt b/API.txt
+index b9dc35fb5752ce04f58aa8c4c3e89c7299f34cd7..2135300183e3dc2126309e8f892e79fe6b5178fb 100644
+--- a/API.txt
++++ b/API.txt
+@@ -4443,7 +4443,7 @@ option: Flag('raw', autofill=True, cli_name='raw', default=False)
+ option: Str('role_servrole?', autofill=False, cli_name='role')
+ option: Str('server_server?', autofill=False, cli_name='server')
+ option: Int('sizelimit?', autofill=False)
+-option: StrEnum('status?', autofill=False, cli_name='status', default=u'enabled', values=[u'enabled', u'configured', u'absent'])
++option: StrEnum('status?', autofill=False, cli_name='status', default=u'enabled', values=[u'enabled', u'configured', u'hidden', u'absent'])
+ option: Int('timelimit?', autofill=False)
+ option: Str('version?')
+ output: Output('count', type=[<type 'int'>])
+diff --git a/install/tools/ipactl b/install/tools/ipactl
+index 2767a26d1b70337d37dbcd87c707919579fe7e29..f40ea5a6df74f04ec7e6e8959d731553651a81d3 100755
+--- a/install/tools/ipactl
++++ b/install/tools/ipactl
+@@ -29,6 +29,7 @@ import ldapurl
+ from ipaserver.install import service, installutils
+ from ipaserver.install.dsinstance import config_dirname
+ from ipaserver.install.installutils import is_ipa_configured, ScriptError
++from ipaserver.masters import ENABLED_SERVICE, HIDDEN_SERVICE
+ from ipalib import api, errors
+ from ipapython.ipaldap import LDAPClient
+ from ipapython.ipautil import wait_for_open_ports, wait_for_open_socket
+@@ -162,7 +163,16 @@ def version_check():
+ 
+ def get_config(dirsrv):
+     base = DN(('cn', api.env.host), ('cn', 'masters'), ('cn', 'ipa'), ('cn', 'etc'), api.env.basedn)
+-    srcfilter = '(ipaConfigString=enabledService)'
++    srcfilter = LDAPClient.combine_filters(
++        [
++            LDAPClient.make_filter({'objectClass': 'ipaConfigObject'}),
++            LDAPClient.make_filter(
++                {'ipaConfigString': [ENABLED_SERVICE, HIDDEN_SERVICE]},
++                rules=LDAPClient.MATCH_ANY
++            ),
++        ],
++        rules=LDAPClient.MATCH_ALL
++    )
+     attrs = ['cn', 'ipaConfigString']
+     if not dirsrv.is_running():
+         raise IpactlError("Failed to get list of services to probe status:\n" +
+diff --git a/ipaserver/install/server/__init__.py b/ipaserver/install/server/__init__.py
+index b6c01d0971b827dc1547adcfff48fbcb545f4b18..f20b3dac4c7f79454a2b8871409319578ee2eb9e 100644
+--- a/ipaserver/install/server/__init__.py
++++ b/ipaserver/install/server/__init__.py
+@@ -240,6 +240,13 @@ class ServerInstallInterface(ServerCertificateInstallInterface,
+     )
+     master_password = master_install_only(master_password)
+ 
++    hidden_replica = knob(
++        None,
++        cli_names='--hidden-replica',
++        description="Install a hidden replica",
++    )
++    hidden_replica = replica_install_only(hidden_replica)
++
+     domain_level = knob(
+         int, constants.MAX_DOMAIN_LEVEL,
+         description="IPA domain level",
+diff --git a/ipaserver/install/server/replicainstall.py b/ipaserver/install/server/replicainstall.py
+index 37ecbe4146fa908c30fb708037fcaa47af1a258b..7178238bfb996f987b5e3beaebe05fa104ada089 100644
+--- a/ipaserver/install/server/replicainstall.py
++++ b/ipaserver/install/server/replicainstall.py
+@@ -1055,6 +1055,7 @@ def promote_check(installer):
+     config.setup_kra = options.setup_kra
+     config.dir = installer._top_dir
+     config.basedn = api.env.basedn
++    config.hidden_replica = options.hidden_replica
+ 
+     http_pkcs12_file = None
+     http_pkcs12_info = None
+@@ -1579,8 +1580,16 @@ def install(installer):
+         remove_replica_info_dir(installer)
+ 
+     # Enable configured services and update DNS SRV records
+-    service.enable_services(config.host_name)
++    if options.hidden_replica:
++        # Set services to hidden
++        service.hide_services(config.host_name)
++    else:
++        # Enable configured services
++        service.enable_services(config.host_name)
++    # update DNS SRV records. Although it's only really necessary in
++    # enabled-service case, also perform update in hidden replica case.
+     api.Command.dns_update_system_records()
++
+     ca_servers = find_providing_servers('CA', api.Backend.ldap2, api=api)
+     api.Backend.ldap2.disconnect()
+ 
+diff --git a/ipaserver/install/service.py b/ipaserver/install/service.py
+index 261eedc85be24478b99e5ae8886aec7bc23a80ed..6d7997c559f8d748f00dd9df28371c53bc12ee21 100644
+--- a/ipaserver/install/service.py
++++ b/ipaserver/install/service.py
+@@ -39,7 +39,7 @@ from ipalib import api, errors
+ from ipaplatform import services
+ from ipaplatform.paths import paths
+ from ipaserver.masters import (
+-    CONFIGURED_SERVICE, ENABLED_SERVICE, SERVICE_LIST
++    CONFIGURED_SERVICE, ENABLED_SERVICE, HIDDEN_SERVICE, SERVICE_LIST
+ )
+ 
+ logger = logging.getLogger(__name__)
+@@ -180,7 +180,7 @@ def set_service_entry_config(name, fqdn, config_values,
+ 
+ 
+ def enable_services(fqdn):
+-    """Change all configured services to enabled
++    """Change all services to enabled state
+ 
+     Server.ldap_configure() only marks a service as configured. Services
+     are enabled at the very end of installation.
+@@ -189,15 +189,46 @@ def enable_services(fqdn):
+ 
+     :param fqdn: hostname of server
+     """
++    _set_services_state(fqdn, ENABLED_SERVICE)
++
++
++def hide_services(fqdn):
++    """Change all services to hidden state
++
++    Note: DNS records must be updated with dns_update_system_records, too.
++
++    :param fqdn: hostname of server
++    """
++    _set_services_state(fqdn, HIDDEN_SERVICE)
++
++
++def _set_services_state(fqdn, dest_state):
++    """Change all services of a host
++
++    :param fqdn: hostname of server
++    :param dest_state: destination state
++    """
+     ldap2 = api.Backend.ldap2
+     search_base = DN(('cn', fqdn), api.env.container_masters, api.env.basedn)
+-    search_filter = ldap2.make_filter(
+-        {
+-            'objectClass': 'ipaConfigObject',
+-            'ipaConfigString': CONFIGURED_SERVICE
+-        },
+-        rules='&'
++
++    source_states = {
++        CONFIGURED_SERVICE.lower(),
++        ENABLED_SERVICE.lower(),
++        HIDDEN_SERVICE.lower()
++    }
++    source_states.remove(dest_state.lower())
++
++    search_filter = ldap2.combine_filters(
++        [
++            ldap2.make_filter({'objectClass': 'ipaConfigObject'}),
++            ldap2.make_filter(
++                {'ipaConfigString': list(source_states)},
++                rules=ldap2.MATCH_ANY
++            ),
++        ],
++        rules=ldap2.MATCH_ALL
+     )
++
+     entries = ldap2.get_entries(
+         search_base,
+         filter=search_filter,
+@@ -208,10 +239,10 @@ def enable_services(fqdn):
+         name = entry['cn']
+         cfgstrings = entry.setdefault('ipaConfigString', [])
+         for value in list(cfgstrings):
+-            if value.lower() == CONFIGURED_SERVICE.lower():
++            if value.lower() in source_states:
+                 cfgstrings.remove(value)
+-        if not case_insensitive_attr_has_value(cfgstrings, ENABLED_SERVICE):
+-            cfgstrings.append(ENABLED_SERVICE)
++        if not case_insensitive_attr_has_value(cfgstrings, dest_state):
++            cfgstrings.append(dest_state)
+ 
+         try:
+             ldap2.update_entry(entry)
+@@ -221,7 +252,9 @@ def enable_services(fqdn):
+             logger.exception("failed to set service %s config values", name)
+             raise
+         else:
+-            logger.debug("Enabled service %s for %s", name, fqdn)
++            logger.debug(
++                "Set service %s for %s to %s", name, fqdn, dest_state
++            )
+ 
+ 
+ class Service(object):
+diff --git a/ipaserver/masters.py b/ipaserver/masters.py
+index 6fa8f02332ceaa10ec30aa5142912f351fb58936..76c1a9594d8b5f88c503a08b84a17e14ac320df3 100644
+--- a/ipaserver/masters.py
++++ b/ipaserver/masters.py
+@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
+ # constants for ipaConfigString
+ CONFIGURED_SERVICE = u'configuredService'
+ ENABLED_SERVICE = u'enabledService'
++HIDDEN_SERVICE = u'hiddenService'
+ 
+ # The service name as stored in cn=masters,cn=ipa,cn=etc. The values are:
+ # 0: systemd service name
+@@ -68,30 +69,53 @@ def find_providing_servers(svcname, conn=None, preferred_hosts=(), api=api):
+         conn = api.Backend.ldap2
+ 
+     dn = DN(api.env.container_masters, api.env.basedn)
+-    query_filter = conn.make_filter(
+-        {
+-            'objectClass': 'ipaConfigObject',
+-            'ipaConfigString': ENABLED_SERVICE,
+-            'cn': svcname
+-        },
+-        rules='&'
++
++    query_filter = conn.combine_filters(
++        [
++            conn.make_filter(
++                {
++                    'objectClass': 'ipaConfigObject',
++                    'cn': svcname
++                },
++                rules=conn.MATCH_ALL,
++            ),
++            conn.make_filter(
++                {
++                    'ipaConfigString': [ENABLED_SERVICE, HIDDEN_SERVICE]
++                },
++                rules=conn.MATCH_ANY
++            ),
++        ],
++        rules=conn.MATCH_ALL
+     )
++
+     try:
+         entries, _trunc = conn.find_entries(
+             filter=query_filter,
+-            attrs_list=[],
++            attrs_list=['ipaConfigString'],
+             base_dn=dn
+         )
+     except errors.NotFound:
+         return []
+ 
+-    # unique list of host names, DNS is case insensitive
+-    servers = list(set(entry.dn[1].value.lower() for entry in entries))
++    # DNS is case insensitive
++    preferred_hosts = list(host_name.lower() for host_name in preferred_hosts)
++    servers = []
++    for entry in entries:
++        servername = entry.dn[1].value.lower()
++        cfgstrings = entry.get('ipaConfigString', [])
++        # always consider enabled services
++        if ENABLED_SERVICE in cfgstrings:
++            servers.append(servername)
++        # use hidden services on preferred hosts
++        elif HIDDEN_SERVICE in cfgstrings and servername in preferred_hosts:
++            servers.append(servername)
++    # unique list of host names
++    servers = list(set(servers))
+     # shuffle the list like DNS SRV would randomize it
+     random.shuffle(servers)
+     # Move preferred hosts to front
+     for host_name in reversed(preferred_hosts):
+-        host_name = host_name.lower()
+         try:
+             servers.remove(host_name)
+         except ValueError:
+diff --git a/ipaserver/plugins/serverrole.py b/ipaserver/plugins/serverrole.py
+index 199978000ce8cf783bda50c46b7c9fa109f70ad6..1f6d2dca518d374d7bd07e96019610e3ef6430be 100644
+--- a/ipaserver/plugins/serverrole.py
++++ b/ipaserver/plugins/serverrole.py
+@@ -70,7 +70,7 @@ class server_role(Object):
+             cli_name='status',
+             label=_('Role status'),
+             doc=_('Status of the role'),
+-            values=(u'enabled', u'configured', u'absent'),
++            values=(u'enabled', u'configured', u'hidden', u'absent'),
+             default=u'enabled',
+             flags={'virtual_attribute', 'no_create', 'no_update'}
+         )
+diff --git a/ipaserver/servroles.py b/ipaserver/servroles.py
+index af4e63710136a15e1673210c3e2207658698fbb5..02a22e77dbb615f735660c53d1b2eb7da022591d 100644
+--- a/ipaserver/servroles.py
++++ b/ipaserver/servroles.py
+@@ -79,7 +79,7 @@ import six
+ 
+ from ipalib import _, errors
+ from ipapython.dn import DN
+-from ipaserver.masters import ENABLED_SERVICE
++from ipaserver.masters import ENABLED_SERVICE, HIDDEN_SERVICE
+ 
+ if six.PY3:
+     unicode = str
+@@ -87,6 +87,7 @@ if six.PY3:
+ 
+ ENABLED = u'enabled'
+ CONFIGURED = u'configured'
++HIDDEN = u'hidden'
+ ABSENT = u'absent'
+ 
+ 
+@@ -190,6 +191,7 @@ class BaseServerRole(LDAPBasedProperty):
+         :returns: * 'enabled' if the role is enabled on the master
+                   * 'configured' if it is not enabled but has
+                     been configured by installer
++                  * 'hidden' if the role is not advertised
+                   * 'absent' otherwise
+         """
+         ldap2 = api_instance.Backend.ldap2
+@@ -442,7 +444,7 @@ class SingleValuedServerAttribute(ServerAttribute):
+         return masters
+ 
+ 
+-_Service = namedtuple('Service', ['name', 'enabled'])
++_Service = namedtuple('Service', ['name', 'enabled', 'hidden'])
+ 
+ 
+ class ServiceBasedRole(BaseServerRole):
+@@ -470,8 +472,9 @@ class ServiceBasedRole(BaseServerRole):
+         entry_cn = entry['cn'][0]
+ 
+         enabled = self._is_service_enabled(entry)
++        hidden = self._is_service_hidden(entry)
+ 
+-        return _Service(name=entry_cn, enabled=enabled)
++        return _Service(name=entry_cn, enabled=enabled, hidden=hidden)
+ 
+     def _is_service_enabled(self, entry):
+         """
+@@ -486,6 +489,15 @@ class ServiceBasedRole(BaseServerRole):
+         ipaconfigstring_values = set(entry.get('ipaConfigString', []))
+         return ENABLED_SERVICE in ipaconfigstring_values
+ 
++    def _is_service_hidden(self, entry):
++        """Determine if service is hidden
++
++        :param entry: LDAPEntry of the service
++        :returns: True if the service entry is enabled, False otherwise
++        """
++        ipaconfigstring_values = set(entry.get('ipaConfigString', []))
++        return HIDDEN_SERVICE in ipaconfigstring_values
++
+     def _get_services_by_masters(self, entries):
+         """
+         given list of entries, return a dictionary keyed by master FQDNs which
+@@ -509,9 +521,12 @@ class ServiceBasedRole(BaseServerRole):
+             except ValueError:
+                 continue
+ 
+-            status = (
+-                ENABLED if all(s.enabled for s in services) else
+-                CONFIGURED)
++            if all(s.enabled for s in services):
++                status = ENABLED
++            elif all(s.hidden for s in services):
++                status = HIDDEN
++            else:
++                status = CONFIGURED
+ 
+             result.append(self.create_role_status_dict(master, status))
+ 
+-- 
+2.20.1
+

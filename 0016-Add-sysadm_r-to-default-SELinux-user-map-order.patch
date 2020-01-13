@@ -1,0 +1,69 @@
+From dfb0b27748aebb307fa3ab72aa1c43a71da1d78e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Fran=C3=A7ois=20Cami?= <fcami@redhat.com>
+Date: Fri, 9 Nov 2018 17:30:32 +0100
+Subject: [PATCH] Add sysadm_r to default SELinux user map order
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+It is a standard SELinux user role included in RHEL (like
+user_r, staff_r, guest_r) and used quite often.
+
+Fixes: https://pagure.io/freeipa/issue/7658
+Signed-off-by: François Cami <fcami@redhat.com>
+Reviewed-By: Rob Crittenden <rcritten@redhat.com>
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+---
+ install/share/bootstrap-template.ldif      | 2 +-
+ install/ui/test/data/ipa_init.json         | 2 +-
+ ipatests/test_xmlrpc/test_config_plugin.py | 8 ++++++--
+ 3 files changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/install/share/bootstrap-template.ldif b/install/share/bootstrap-template.ldif
+index 1b80794e66a5986d049195885ae1c9d6380eec81..6cd17e37ef147169b65709a56b0fa7312889c262 100644
+--- a/install/share/bootstrap-template.ldif
++++ b/install/share/bootstrap-template.ldif
+@@ -425,7 +425,7 @@ ipaDefaultEmailDomain: $DOMAIN
+ ipaMigrationEnabled: FALSE
+ ipaConfigString: AllowNThash
+ ipaConfigString: KDC:Disable Last Success
+-ipaSELinuxUserMapOrder: guest_u:s0$$xguest_u:s0$$user_u:s0$$staff_u:s0-s0:c0.c1023$$unconfined_u:s0-s0:c0.c1023
++ipaSELinuxUserMapOrder: guest_u:s0$$xguest_u:s0$$user_u:s0$$staff_u:s0-s0:c0.c1023$$sysadm_u:s0-s0:c0.c1023$$unconfined_u:s0-s0:c0.c1023
+ ipaSELinuxUserMapDefault: unconfined_u:s0-s0:c0.c1023
+ 
+ dn: cn=cosTemplates,cn=accounts,$SUFFIX
+diff --git a/install/ui/test/data/ipa_init.json b/install/ui/test/data/ipa_init.json
+index dd4b84cc920408ec8fa0bb92e9d6debc67cede7e..52f6ab191e05b314fcbeaa4786230e5ae2ebea4b 100644
+--- a/install/ui/test/data/ipa_init.json
++++ b/install/ui/test/data/ipa_init.json
+@@ -863,7 +863,7 @@
+                   "ipausers"
+                ],
+                "ipaselinuxusermaporder" : [
+-                  "guest_u:s0$xguest_u:s0$user_u:s0$staff_u:s0-s0:c0.c1023$unconfined_u:s0-s0:c0.c1023"
++                  "guest_u:s0$xguest_u:s0$user_u:s0$staff_u:s0-s0:c0.c1023$sysadm_u:s0-s0:c0.c1023$unconfined_u:s0-s0:c0.c1023"
+                ],
+                "ca_renewal_master_server" : [
+                   "vm.example.com"
+diff --git a/ipatests/test_xmlrpc/test_config_plugin.py b/ipatests/test_xmlrpc/test_config_plugin.py
+index a277eab7eeb44590f982510564e92935c444c744..bd5a62acbed6a6c29bbf5fcbd041ef59bb0363bd 100644
+--- a/ipatests/test_xmlrpc/test_config_plugin.py
++++ b/ipatests/test_xmlrpc/test_config_plugin.py
+@@ -148,8 +148,12 @@ class test_config(Declarative):
+ 
+         dict(
+             desc='Try to set new selinux order and invalid default user',
+-            command=('config_mod', [],
+-                dict(ipaselinuxusermaporder=u'xguest_u:s0$guest_u:s0$user_u:s0-s0:c0.c1023$staff_u:s0-s0:c0.c1023$unconfined_u:s0-s0:c0.c1023',
++            command=(
++                'config_mod', [],
++                dict(
++                    ipaselinuxusermaporder=u'xguest_u:s0$guest_u:s0'
++                    u'$user_u:s0-s0:c0.c1023$staff_u:s0-s0:c0.c1023'
++                    u'$sysadm_u:s0-s0:c0.c1023$unconfined_u:s0-s0:c0.c1023',
+                     ipaselinuxusermapdefault=u'unknown_u:s0')),
+             expected=errors.ValidationError(name='ipaselinuxusermapdefault',
+                 error='SELinux user map default user not in order list'),
+-- 
+2.20.1
+

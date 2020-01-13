@@ -1,0 +1,44 @@
+From 9fd415c73d0b70c1afadd5694269bf429fbd1aa2 Mon Sep 17 00:00:00 2001
+From: Sergey Orlov <sorlov@redhat.com>
+Date: Thu, 25 Apr 2019 18:30:24 +0200
+Subject: [PATCH] ipa console: catch proper exception when history file can not
+ be open
+
+When history file could not be open we were catching OSError. This worked
+for python3, as it raises FileNotFoundError, which is a subclass of
+OSError. But in python2 IOError is raised when file does not exist and
+as this exception was not catched, "ipa conosle" command was crashing.
+As far as in pyton3 IOError and OSError have been merged
+(OSError is IOError) we can safely catch only IOError.
+
+Fixes: https://pagure.io/freeipa/issue/7922
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+---
+ ipalib/cli.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/ipalib/cli.py b/ipalib/cli.py
+index 7b2af485d94e9f98df44b24489795c45d690956c..2c74a2aaa47a2471a232d81aa6acfafd7f9f930f 100644
+--- a/ipalib/cli.py
++++ b/ipalib/cli.py
+@@ -969,7 +969,7 @@ class console(frontend.Command):
+         history = os.path.join(api.env.dot_ipa, "console.history")
+         try:
+             readline.read_history_file(history)
+-        except OSError:
++        except IOError:
+             pass
+ 
+         def save_history():
+@@ -979,7 +979,7 @@ class console(frontend.Command):
+             readline.set_history_length(50)
+             try:
+                 readline.write_history_file(history)
+-            except OSError:
++            except IOError:
+                 logger.exception("Unable to store history %s", history)
+ 
+         atexit.register(save_history)
+-- 
+2.20.1
+

@@ -1,0 +1,42 @@
+From dc96bc41bbff6b0f596649e992df53734278e24f Mon Sep 17 00:00:00 2001
+From: Fraser Tweedale <ftweedal@redhat.com>
+Date: Tue, 26 Mar 2019 19:43:25 +1100
+Subject: [PATCH] constants: add ca_renewal container
+
+Part of: https://pagure.io/freeipa/issue/7885
+
+Reviewed-By: Florence Blanc-Renaud <flo@redhat.com>
+---
+ ipalib/constants.py             | 1 +
+ ipaserver/install/cainstance.py | 3 +--
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/ipalib/constants.py b/ipalib/constants.py
+index 7ff9c6aed32debd609db2650420994aa32e2466c..678a708aa19b682046b570fdce1804ea58865c88 100644
+--- a/ipalib/constants.py
++++ b/ipalib/constants.py
+@@ -129,6 +129,7 @@ DEFAULT_CONFIG = (
+     ('container_sysaccounts', DN(('cn', 'sysaccounts'), ('cn', 'etc'))),
+     ('container_certmap', DN(('cn', 'certmap'))),
+     ('container_certmaprules', DN(('cn', 'certmaprules'), ('cn', 'certmap'))),
++    ('container_ca_renewal', DN(('cn', 'ca_renewal'), ('cn', 'ipa'), ('cn', 'etc'))),
+ 
+     # Ports, hosts, and URIs:
+     # Following values do not have any reasonable default.
+diff --git a/ipaserver/install/cainstance.py b/ipaserver/install/cainstance.py
+index b4f6262b2c41e2da7992c403154a476aa3b82dd1..1f22d120478a6d4019663281d3191a27a5ee09ea 100644
+--- a/ipaserver/install/cainstance.py
++++ b/ipaserver/install/cainstance.py
+@@ -1746,8 +1746,7 @@ def update_ca_renewal_entry(conn, nickname, cert):
+     :param cert: python-cryptography X509Certificate
+ 
+     """
+-    dn = DN(('cn', nickname), ('cn', 'ca_renewal'),
+-            ('cn', 'ipa'), ('cn', 'etc'), api.env.basedn)
++    dn = DN(('cn', nickname), api.env.container_ca_renewal, api.env.basedn)
+     try:
+         entry = conn.get_entry(dn, ['usercertificate'])
+         entry['usercertificate'] = [cert]
+-- 
+2.20.1
+

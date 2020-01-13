@@ -1,0 +1,56 @@
+From dae784292fb49559de4aaee2a999c444a72ce272 Mon Sep 17 00:00:00 2001
+From: Alexander Bokovoy <abokovoy@redhat.com>
+Date: Tue, 16 Oct 2018 17:54:09 +0300
+Subject: [PATCH] net groupmap: force using empty config when mapping Guests
+
+When we define a group mapping for BUILTIN\Guests to 'nobody' group in
+we run 'net groupmap add ...' with a default /etc/samba/smb.conf which
+is now configured to use ipasam passdb module. We authenticate to LDAP
+with GSSAPI in ipasam passdb module initialization.
+
+If GSSAPI authentication failed (KDC is offline, for example, during
+server upgrade), 'net groupmap add' crashes after ~10 attempts to
+re-authenticate. This is intended behavior in smbd/winbindd as they
+cannot work anymore. However, for the command line tools there are
+plenty of operations where passdb module is not needed.
+
+Additionally, GSSAPI authentication uses the default ccache in the
+environment and a key from /etc/samba/samba.keytab keytab. This means
+that if you'd run 'net *' as root, it will replace whatever Kerberos
+tickets you have with a TGT for cifs/`hostname` and a service ticket to
+ldap/`hostname` of IPA master.
+
+Apply a simple solution to avoid using /etc/samba/smb.conf when we
+set up the group mapping by specifying '-s /dev/null' in 'net groupmap'
+call.
+
+For upgrade code this is enough as in
+a678336b8b36cdbea2512e79c09e475fdc249569 we enforce use of empty
+credentials cache during upgrade to prevent tripping on individual
+ccaches from KEYRING: or KCM: cache collections.
+
+Related: https://pagure.io/freeipa/issue/7705
+Reviewed-By: Florence Blanc-Renaud <frenaud@redhat.com>
+(cherry picked from commit 3b79deae537f73ffd18e85f52e00e611543e5e45)
+---
+ ipaserver/install/adtrustinstance.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/ipaserver/install/adtrustinstance.py b/ipaserver/install/adtrustinstance.py
+index 4141d8991cf75b60dea4ec123f0e3931bb3e6976..a21be5fba375a48fb82ea4224d00fb71c3688eb8 100644
+--- a/ipaserver/install/adtrustinstance.py
++++ b/ipaserver/install/adtrustinstance.py
+@@ -123,8 +123,8 @@ def make_netbios_name(s):
+ 
+ def map_Guests_to_nobody():
+     env = {'LC_ALL': 'C'}
+-    args = [paths.NET, 'groupmap', 'add', 'sid=S-1-5-32-546',
+-            'unixgroup=nobody', 'type=builtin']
++    args = [paths.NET, '-s', '/dev/null', 'groupmap', 'add',
++            'sid=S-1-5-32-546', 'unixgroup=nobody', 'type=builtin']
+ 
+     logger.debug("Map BUILTIN\\Guests to a group 'nobody'")
+     ipautil.run(args, env=env, raiseonerr=False, capture_error=True)
+-- 
+2.20.1
+

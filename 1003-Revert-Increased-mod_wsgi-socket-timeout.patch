@@ -1,0 +1,28 @@
+From 2eb2979487c55b542f8c3af1a3bf3ac00fec7a57 Mon Sep 17 00:00:00 2001
+From: Jan Cholasta <jcholast@redhat.com>
+Date: Wed, 22 Jun 2016 13:53:46 +0200
+Subject: [PATCH] Revert "Increased mod_wsgi socket-timeout"
+
+This reverts commit 12d8a0cf22a271ff41e02f4bcf862877dd680ae5.
+
+https://bugzilla.redhat.com/show_bug.cgi?id=1348948
+---
+ install/conf/ipa.conf | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/install/conf/ipa.conf b/install/conf/ipa.conf
+index 912a63c2240e0681dfbeeac223a902b15b304716..c5fc518f803d379287043b405efeb46dd53a6b28 100644
+--- a/install/conf/ipa.conf
++++ b/install/conf/ipa.conf
+@@ -48,7 +48,7 @@ WSGISocketPrefix /run/httpd/wsgi
+ 
+ # Configure mod_wsgi handler for /ipa
+ WSGIDaemonProcess ipa processes=$WSGI_PROCESSES threads=1 maximum-requests=500 \
+-  user=ipaapi group=ipaapi display-name=%{GROUP} socket-timeout=2147483647 \
++  user=ipaapi group=ipaapi display-name=%{GROUP} \
+   lang=C.UTF-8 locale=C.UTF-8
+ WSGIImportScript /usr/share/ipa/wsgi.py process-group=ipa application-group=ipa
+ WSGIScriptAlias /ipa /usr/share/ipa/wsgi.py
+-- 
+2.20.1
+

@@ -1,0 +1,45 @@
+From 6c72f4241c70200d3d6637c254c07504aa19cdc9 Mon Sep 17 00:00:00 2001
+From: Florence Blanc-Renaud <flo@redhat.com>
+Date: Mon, 25 Mar 2019 14:22:59 +0100
+Subject: [PATCH] ipa-replica-manage: fix force-sync
+
+ipa-replica-manage force-sync --from <server> is performing a wrong check
+that may result in the tool looping on "No status yet".
+
+force-sync is adding a nsds5replicaupdateschedule attribute to the
+replication agreement in order to force replication to wake up. Note that
+this is not a re-initialization (re init drops the current db and reloads
+the entire db).
+
+In a second step, force-sync is checking the replication agreement by reading
+nsds5BeginReplicaRefresh, nsds5ReplicaLastInitStatus,
+nsds5ReplicaLastInitStart and nsds5ReplicaLastInitEnd. This is a wrong
+test as force-sync is not an init operation and does not touch these
+attributes.
+
+The tool should call wait_for_repl_update rather than wait_for_repl_init.
+This way, the check is done on the replication agreement attributes
+nsds5replicaUpdateInProgress, nsds5ReplicaLastUpdateStatus,
+nsds5ReplicaLastUpdateStart and nsds5ReplicaLastUpdateEnd.
+
+Fixes: https://pagure.io/freeipa/issue/7886
+---
+ install/tools/ipa-replica-manage | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/install/tools/ipa-replica-manage b/install/tools/ipa-replica-manage
+index cffed58b79f3e2cc41f8cf45b066f3843da01915..2a875b8fa58390c704d36b7d355ac79181021c35 100755
+--- a/install/tools/ipa-replica-manage
++++ b/install/tools/ipa-replica-manage
+@@ -1246,7 +1246,7 @@ def force_sync(realm, thishost, fromhost, dirman_passwd, nolookup=False):
+         repl = replication.ReplicationManager(realm, fromhost, dirman_passwd)
+         repl.force_sync(repl.conn, thishost)
+         agreement = repl.get_replication_agreement(thishost)
+-        repl.wait_for_repl_init(repl.conn, agreement.dn)
++        repl.wait_for_repl_update(repl.conn, agreement.dn)
+         ds.replica_manage_time_skew(prevent=True)
+ 
+ def show_DNA_ranges(hostname, master, realm, dirman_passwd, nextrange=False,
+-- 
+2.20.1
+

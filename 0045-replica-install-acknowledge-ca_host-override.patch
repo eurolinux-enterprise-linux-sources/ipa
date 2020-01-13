@@ -1,0 +1,40 @@
+From 14dc08477429ff22acf36052367394a4b59089d0 Mon Sep 17 00:00:00 2001
+From: Christian Heimes <cheimes@redhat.com>
+Date: Wed, 27 Mar 2019 11:53:33 +0100
+Subject: [PATCH] replica install: acknowledge ca_host override
+
+Fixup for commit c0fd5e39c726ef4dc12e87a2f9c08ebb32ed27fe. Only set
+ca_host to source master hostname if ca_host points to the local host.
+This permits users to override ca_host in /etc/ipa/default.conf when
+installing a replica.
+
+Related: https://pagure.io/freeipa/issue/7744
+Signed-off-by: Christian Heimes <cheimes@redhat.com>
+Reviewed-By: Alexander Bokovoy <abokovoy@redhat.com>
+Reviewed-By: Tibor Dudlak <tdudlak@redhat.com>
+Reviewed-By: Tibor Dudlak <tdudlak@redhat.com>
+---
+ ipaserver/install/server/replicainstall.py | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/ipaserver/install/server/replicainstall.py b/ipaserver/install/server/replicainstall.py
+index 7178238bfb996f987b5e3beaebe05fa104ada089..e13b7f18c4d4df7efde50ac9cb7d2f71bfa765cc 100644
+--- a/ipaserver/install/server/replicainstall.py
++++ b/ipaserver/install/server/replicainstall.py
+@@ -1048,7 +1048,12 @@ def promote_check(installer):
+     config.host_name = api.env.host
+     config.domain_name = api.env.domain
+     config.master_host_name = api.env.server
+-    config.ca_host_name = api.env.ca_host
++    if not api.env.ca_host or api.env.ca_host == api.env.host:
++        # ca_host has not been configured explicitly, prefer source master
++        config.ca_host_name = api.env.server
++    else:
++        # default to ca_host from IPA config
++        config.ca_host_name = api.env.ca_host
+     config.kra_host_name = config.ca_host_name
+     config.ca_ds_port = 389
+     config.setup_ca = options.setup_ca
+-- 
+2.20.1
+

@@ -1,0 +1,118 @@
+From ec58278fa7fc6d0b5ae8340c4054005a7864086f Mon Sep 17 00:00:00 2001
+From: Christian Heimes <cheimes@redhat.com>
+Date: Tue, 26 Mar 2019 13:10:23 +0100
+Subject: [PATCH] Don't allow to hide last server for a role
+
+DNSSec key master and CA renewal master can't be hidden. There must be
+at least one enabled server available for each role, too.
+
+Fixes: https://pagure.io/freeipa/issue/7892
+Signed-off-by: Christian Heimes <cheimes@redhat.com>
+Reviewed-By: Thomas Woerner <twoerner@redhat.com>
+Reviewed-By: Francois Cami <fcami@redhat.com>
+---
+ ipaserver/plugins/server.py                   | 30 ++++++++++++++++++
+ .../test_replica_promotion.py                 | 31 +++++++++++++++++++
+ 2 files changed, 61 insertions(+)
+
+diff --git a/ipaserver/plugins/server.py b/ipaserver/plugins/server.py
+index 0d144d13bca66b65de64328139fd7126eea24c89..bfd1406ff826aea97195aa08ca35018e35cac18c 100644
+--- a/ipaserver/plugins/server.py
++++ b/ipaserver/plugins/server.py
+@@ -970,6 +970,35 @@ class server_state(crud.PKQuery):
+ 
+     has_output = output.standard_boolean
+ 
++    def _check_hide_server(self, fqdn):
++        result = self.api.Command.config_show()['result']
++        err = []
++        # single value entries
++        if result.get("ca_renewal_master_server") == fqdn:
++            err.append(_("Cannot hide CA renewal master."))
++        if result.get("dnssec_key_master_server") == fqdn:
++            err.append(_("Cannot hide DNSSec key master."))
++        # multi value entries, only fail if we are the last one
++        checks = [
++            ("ca_server_server", "CA"),
++            ("dns_server_server", "DNS"),
++            ("ipa_master_server", "IPA"),
++            ("kra_server_server", "KRA"),
++        ]
++        for key, name in checks:
++            values = result.get(key, [])
++            if values == [fqdn]:  # fqdn is the only entry
++                err.append(
++                    _("Cannot hide last enabled %(name)s server.") % {
++                        'name': name
++                    }
++                )
++        if err:
++            raise errors.ValidationError(
++                name=fqdn,
++                error=' '.join(str(e) for e in err)
++            )
++
+     def execute(self, *keys, **options):
+         fqdn = keys[0]
+         if options['state'] == u'enabled':
+@@ -992,6 +1021,7 @@ class server_state(crud.PKQuery):
+         if to_status == ENABLED:
+             enable_services(fqdn)
+         else:
++            self._check_hide_server(fqdn)
+             hide_services(fqdn)
+ 
+         # update system roles
+diff --git a/ipatests/test_integration/test_replica_promotion.py b/ipatests/test_integration/test_replica_promotion.py
+index 9ce0074ea0df276b4800b306530d04c8274ece69..bf028bf7dc58abb6455ba1659f2d19bede69daa2 100644
+--- a/ipatests/test_integration/test_replica_promotion.py
++++ b/ipatests/test_integration/test_replica_promotion.py
+@@ -812,7 +812,15 @@ class TestHiddenReplicaPromotion(IntegrationTest):
+ 
+     @classmethod
+     def install(cls, mh):
++        # master with DNSSEC master
+         tasks.install_master(cls.master, setup_dns=True, setup_kra=True)
++        cls.master.run_command([
++            "ipa-dns-install",
++            "--dnssec-master",
++            "--forwarder", cls.master.config.dns_forwarder,
++            "-U",
++        ])
++        # hidden replica with CA and DNS
+         tasks.install_replica(
+             cls.master, cls.replicas[0],
+             setup_dns=True, setup_kra=True,
+@@ -879,6 +887,29 @@ class TestHiddenReplicaPromotion(IntegrationTest):
+         self._check_dnsrecords([self.master], [self.replicas[0]])
+         self._check_config([self.master], [self.replicas[0]])
+ 
++    def test_hide_master_fails(self):
++        # verify state
++        self._check_config([self.master], [self.replicas[0]])
++        # nothing to do
++        result = self.master.run_command([
++            'ipa', 'server-state',
++            self.master.hostname, '--state=enabled'
++        ], raiseonerr=False)
++        assert result.returncode == 1
++        assert "no modifications to be performed" in result.stderr_text
++        # hiding the last master fails
++        result = self.master.run_command([
++            'ipa', 'server-state',
++            self.master.hostname, '--state=hidden'
++        ], raiseonerr=False)
++        assert result.returncode == 1
++        keys = [
++            "CA renewal master", "DNSSec key master", "CA server",
++            "KRA server", "DNS server", "IPA server"
++        ]
++        for key in keys:
++            assert key in result.stderr_text
++
+     def test_hidden_replica_promote(self):
+         self.replicas[0].run_command([
+             'ipa', 'server-state',
+-- 
+2.20.1
+

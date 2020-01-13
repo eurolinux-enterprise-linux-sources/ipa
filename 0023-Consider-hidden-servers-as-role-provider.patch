@@ -1,0 +1,45 @@
+From d5538488447a42110c2b6f77ffdc80d4c6e0e61e Mon Sep 17 00:00:00 2001
+From: Christian Heimes <cheimes@redhat.com>
+Date: Mon, 25 Mar 2019 15:58:07 +0100
+Subject: [PATCH] Consider hidden servers as role provider
+
+Hidden services are now considered as associated role providers, too. This
+fixes the issue of:
+
+    invalid 'PKINIT enabled server': all masters must have IPA
+    master role enabled
+
+and similar issues with CA and DNS.
+
+Fixes: https://pagure.io/freeipa/issue/7892
+Signed-off-by: Christian Heimes <cheimes@redhat.com>
+Reviewed-By: Thomas Woerner <twoerner@redhat.com>
+Reviewed-By: Francois Cami <fcami@redhat.com>
+---
+ ipaserver/servroles.py | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/ipaserver/servroles.py b/ipaserver/servroles.py
+index 02a22e77dbb615f735660c53d1b2eb7da022591d..9c963be53527bb955ebf2b8cec7960f0d90717a4 100644
+--- a/ipaserver/servroles.py
++++ b/ipaserver/servroles.py
+@@ -338,12 +338,13 @@ class ServerAttribute(LDAPBasedProperty):
+         ldap.update_entry(service_entry)
+ 
+     def _get_assoc_role_providers(self, api_instance):
+-        """
+-        get list of all servers on which the associated role is enabled
++        """get list of all servers on which the associated role is enabled
++
++        Consider a hidden server as a valid provider for a role.
+         """
+         return [
+             r[u'server_server'] for r in self.associated_role.status(
+-                api_instance) if r[u'status'] == ENABLED]
++                api_instance) if r[u'status'] in {ENABLED, HIDDEN}]
+ 
+     def _remove(self, api_instance, masters):
+         """
+-- 
+2.20.1
+

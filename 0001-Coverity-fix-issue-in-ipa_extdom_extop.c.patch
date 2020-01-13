@@ -1,0 +1,33 @@
+From 5fb390bc2aed0f460e96c0e98dd57ecf01aec01c Mon Sep 17 00:00:00 2001
+From: Florence Blanc-Renaud <flo@redhat.com>
+Date: Thu, 21 Mar 2019 13:59:32 +0100
+Subject: [PATCH] Coverity: fix issue in ipa_extdom_extop.c
+
+Coverity found the following issue:
+Error: BAD_COMPARE (CWE-697): [#def1]
+freeipa-4.6.5/daemons/ipa-slapi-plugins/ipa-extdom-extop/ipa_extdom_extop.c:121: null_misuse: Comparing pointer "threadnumber" against "NULL" using anything besides "==" or "!=" is likely to be incorrect.
+
+The comparison is using the pointer while it should use the pointed value.
+
+Fixes: https://pagure.io/freeipa/issue/7884
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+---
+ daemons/ipa-slapi-plugins/ipa-extdom-extop/ipa_extdom_extop.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/daemons/ipa-slapi-plugins/ipa-extdom-extop/ipa_extdom_extop.c b/daemons/ipa-slapi-plugins/ipa-extdom-extop/ipa_extdom_extop.c
+index 3abaa411d2873dedb27ac83bc53d82677577e5b5..10d3f86ebad920fb9c051aa428cbd675b682f14a 100644
+--- a/daemons/ipa-slapi-plugins/ipa-extdom-extop/ipa_extdom_extop.c
++++ b/daemons/ipa-slapi-plugins/ipa-extdom-extop/ipa_extdom_extop.c
+@@ -118,7 +118,7 @@ static int ipa_get_threadnumber(Slapi_ComponentId *plugin_id, size_t *threadnumb
+     *threadnumber = slapi_entry_attr_get_uint(search_entries[0],
+                                               NSSLAPD_THREADNUMBER);
+ 
+-    if (threadnumber <= 0) {
++    if (*threadnumber <= 0) {
+         LOG_FATAL("No thread number found.\n");
+         ret = LDAP_OPERATIONS_ERROR;
+         goto done;
+-- 
+2.20.1
+

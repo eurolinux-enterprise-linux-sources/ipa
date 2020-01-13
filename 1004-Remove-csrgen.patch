@@ -1,0 +1,407 @@
+From 1c884659987140a34ce70e1fb55eb82e8f91b70a Mon Sep 17 00:00:00 2001
+From: Jan Cholasta <jcholast@redhat.com>
+Date: Thu, 16 Mar 2017 09:44:21 +0000
+Subject: [PATCH] Remove csrgen
+
+This reverts commits:
+* 72de679eb445c975ec70cd265d37d4927823ce5b
+* 177f07e163d6d591a1e609d35e0a6f6f5347551e
+* 80be18162921268be9c8981495c9e8a4de0c85cd
+* 83e2c2b65eeb5a3aa4a59c0535e9177aac5e4637
+* ada91c20588046bb147fc701718d3da4d2c080ca
+* 4350dcdea22fd2284836315d0ae7d38733a7620e
+* 39a5d9c5aae77687f67d9be02457733bdfb99ead
+* a26cf0d7910dd4c0a4da08682b4be8d3d94ba520
+* afd7c05d11432304bfdf183832a21d419f363689
+* f1a1c6eca1b294f24174d7b0e1f78de46d9d5b05
+* fc58eff6a3d7fe805e612b8b002304d8b9cd4ba9
+* 10ef5947860f5098182b1f95c08c1158e2da15f9
+
+https://bugzilla.redhat.com/show_bug.cgi?id=1432630
+---
+ freeipa.spec.in                               | 18 ----
+ .../csrgen/profiles/caIPAserviceCert.json     | 15 ----
+ ipaclient/csrgen/profiles/userCert.json       | 15 ----
+ .../csrgen/templates/openssl_macros.tmpl      | 29 -------
+ ipaclient/plugins/cert.py                     | 82 +------------------
+ ipaclient/setup.py                            |  7 --
+ ipalib/errors.py                              | 28 -------
+ ipatests/setup.py                             |  2 -
+ ipatests/test_ipaclient/__init__.py           |  7 --
+ .../data/test_csrgen/profiles/profile.json    |  8 --
+ .../test_csrgen/templates/identity_base.tmpl  |  1 -
+ 11 files changed, 1 insertion(+), 211 deletions(-)
+ delete mode 100644 ipaclient/csrgen/profiles/caIPAserviceCert.json
+ delete mode 100644 ipaclient/csrgen/profiles/userCert.json
+ delete mode 100644 ipaclient/csrgen/templates/openssl_macros.tmpl
+ delete mode 100644 ipatests/test_ipaclient/__init__.py
+ delete mode 100644 ipatests/test_ipaclient/data/test_csrgen/profiles/profile.json
+ delete mode 100644 ipatests/test_ipaclient/data/test_csrgen/templates/identity_base.tmpl
+
+diff --git a/freeipa.spec.in b/freeipa.spec.in
+index 093df7e2bb3d11381e37a6d150858c1f1680b61d..60da86b27fe603488b5172e591d4478c76c5181d 100644
+--- a/freeipa.spec.in
++++ b/freeipa.spec.in
+@@ -248,7 +248,6 @@ BuildRequires:  python2-sssdconfig
+ BuildRequires:  python2-nose
+ BuildRequires:  python2-paste
+ BuildRequires:  python2-systemd
+-BuildRequires:  python2-jinja2
+ BuildRequires:  python2-augeas
+ 
+ %if 0%{?with_python3}
+@@ -287,7 +286,6 @@ BuildRequires:  python3-libsss_nss_idmap
+ BuildRequires:  python3-nose
+ BuildRequires:  python3-paste
+ BuildRequires:  python3-systemd
+-BuildRequires:  python3-jinja2
+ BuildRequires:  python3-augeas
+ BuildRequires:  python3-netaddr
+ BuildRequires:  python3-pyasn1
+@@ -647,7 +645,6 @@ Requires: %{name}-client-common = %{version}-%{release}
+ Requires: %{name}-common = %{version}-%{release}
+ Requires: python2-ipalib = %{version}-%{release}
+ Requires: python2-dns >= 1.15
+-Requires: python2-jinja2
+ 
+ %description -n python2-ipaclient
+ IPA is an integrated solution to provide centrally managed Identity (users,
+@@ -670,7 +667,6 @@ Requires: %{name}-client-common = %{version}-%{release}
+ Requires: %{name}-common = %{version}-%{release}
+ Requires: python3-ipalib = %{version}-%{release}
+ Requires: python3-dns >= 1.15
+-Requires: python3-jinja2
+ 
+ %description -n python3-ipaclient
+ IPA is an integrated solution to provide centrally managed Identity (users,
+@@ -1623,13 +1619,6 @@ fi
+ %{python_sitelib}/ipaclient/remote_plugins/*.py*
+ %dir %{python_sitelib}/ipaclient/remote_plugins/2_*
+ %{python_sitelib}/ipaclient/remote_plugins/2_*/*.py*
+-%dir %{python_sitelib}/ipaclient/csrgen
+-%dir %{python_sitelib}/ipaclient/csrgen/profiles
+-%{python_sitelib}/ipaclient/csrgen/profiles/*.json
+-%dir %{python_sitelib}/ipaclient/csrgen/rules
+-%{python_sitelib}/ipaclient/csrgen/rules/*.json
+-%dir %{python_sitelib}/ipaclient/csrgen/templates
+-%{python_sitelib}/ipaclient/csrgen/templates/*.tmpl
+ %{python_sitelib}/ipaclient-*.egg-info
+ 
+ 
+@@ -1654,13 +1643,6 @@ fi
+ %dir %{python3_sitelib}/ipaclient/remote_plugins/2_*
+ %{python3_sitelib}/ipaclient/remote_plugins/2_*/*.py
+ %{python3_sitelib}/ipaclient/remote_plugins/2_*/__pycache__/*.py*
+-%dir %{python3_sitelib}/ipaclient/csrgen
+-%dir %{python3_sitelib}/ipaclient/csrgen/profiles
+-%{python3_sitelib}/ipaclient/csrgen/profiles/*.json
+-%dir %{python3_sitelib}/ipaclient/csrgen/rules
+-%{python3_sitelib}/ipaclient/csrgen/rules/*.json
+-%dir %{python3_sitelib}/ipaclient/csrgen/templates
+-%{python3_sitelib}/ipaclient/csrgen/templates/*.tmpl
+ %{python3_sitelib}/ipaclient-*.egg-info
+ 
+ %endif # with_python3
+diff --git a/ipaclient/csrgen/profiles/caIPAserviceCert.json b/ipaclient/csrgen/profiles/caIPAserviceCert.json
+deleted file mode 100644
+index 114d2ffd4e0d8eae833eaa594f6a17a79da909be..0000000000000000000000000000000000000000
+--- a/ipaclient/csrgen/profiles/caIPAserviceCert.json
++++ /dev/null
+@@ -1,15 +0,0 @@
+-[
+-    {
+-        "syntax": "syntaxSubject",
+-        "data": [
+-            "dataHostCN",
+-            "dataSubjectBase"
+-        ]
+-    },
+-    {
+-        "syntax": "syntaxSAN",
+-        "data": [
+-            "dataDNS"
+-        ]
+-    }
+-]
+diff --git a/ipaclient/csrgen/profiles/userCert.json b/ipaclient/csrgen/profiles/userCert.json
+deleted file mode 100644
+index d6cf5cfffcfadd604fc3e8283d1be15767278c7a..0000000000000000000000000000000000000000
+--- a/ipaclient/csrgen/profiles/userCert.json
++++ /dev/null
+@@ -1,15 +0,0 @@
+-[
+-    {
+-        "syntax": "syntaxSubject",
+-        "data": [
+-            "dataUsernameCN",
+-            "dataSubjectBase"
+-        ]
+-    },
+-    {
+-        "syntax": "syntaxSAN",
+-        "data": [
+-            "dataEmail"
+-        ]
+-    }
+-]
+diff --git a/ipaclient/csrgen/templates/openssl_macros.tmpl b/ipaclient/csrgen/templates/openssl_macros.tmpl
+deleted file mode 100644
+index d31b8fef5f2d85e1b3d5ecf425f00ec9c22ac301..0000000000000000000000000000000000000000
+--- a/ipaclient/csrgen/templates/openssl_macros.tmpl
++++ /dev/null
+@@ -1,29 +0,0 @@
+-{# List containing rendered sections to be included at end #}
+-{% set openssl_sections = [] %}
+-
+-{#
+-List containing one entry for each section name allocated. Because of
+-scoping rules, we need to use a list so that it can be a "per-render global"
+-that gets updated in place. Real globals are shared by all templates with the
+-same environment, and variables defined in the macro don't persist after the
+-macro invocation ends.
+-#}
+-{% set openssl_section_num = [] %}
+-
+-{% macro section() -%}
+-{% set name -%}
+-sec{{ openssl_section_num|length -}}
+-{% endset -%}
+-{% do openssl_section_num.append('') -%}
+-{% set contents %}{{ caller() }}{% endset -%}
+-{% if contents -%}
+-{% set sectiondata = formatsection(name, contents) -%}
+-{% do openssl_sections.append(sectiondata) -%}
+-{% endif -%}
+-{{ name -}}
+-{% endmacro %}
+-
+-{% macro formatsection(name, contents) -%}
+-[ {{ name }} ]
+-{{ contents -}}
+-{% endmacro %}
+diff --git a/ipaclient/plugins/cert.py b/ipaclient/plugins/cert.py
+index a1ecd9ae45b241fef0bca9b80102fef79832ebd1..eea0ca1e46b3ed46fe7d29b85c1d86dd2131567c 100644
+--- a/ipaclient/plugins/cert.py
++++ b/ipaclient/plugins/cert.py
+@@ -21,8 +21,6 @@
+ 
+ import base64
+ 
+-import six
+-
+ from ipaclient.frontend import MethodOverride
+ from ipalib import errors
+ from ipalib import x509
+@@ -31,9 +29,6 @@ from ipalib.parameters import BinaryFile, File, Flag, Str
+ from ipalib.plugable import Registry
+ from ipalib.text import _
+ 
+-if six.PY3:
+-    unicode = str
+-
+ register = Registry()
+ 
+ 
+@@ -73,87 +68,12 @@ class CertRetrieveOverride(MethodOverride):
+ 
+ @register(override=True, no_fail=True)
+ class cert_request(CertRetrieveOverride):
+-    takes_options = CertRetrieveOverride.takes_options + (
+-        Str(
+-            'database?',
+-            label=_('Path to NSS database'),
+-            doc=_('Path to NSS database to use for private key'),
+-        ),
+-        Str(
+-            'private_key?',
+-            label=_('Path to private key file'),
+-            doc=_('Path to PEM file containing a private key'),
+-        ),
+-        Str(
+-            'password_file?',
+-            label=_(
+-                'File containing a password for the private key or database'),
+-        ),
+-        Str(
+-            'csr_profile_id?',
+-            label=_('Name of CSR generation profile (if not the same as'
+-                    ' profile_id)'),
+-        ),
+-    )
+-
+     def get_args(self):
+         for arg in super(cert_request, self).get_args():
+             if arg.name == 'csr':
+-                arg = arg.clone_retype(arg.name, File, required=False)
++                arg = arg.clone_retype(arg.name, File)
+             yield arg
+ 
+-    def forward(self, csr=None, **options):
+-        database = options.pop('database', None)
+-        private_key = options.pop('private_key', None)
+-        csr_profile_id = options.pop('csr_profile_id', None)
+-        password_file = options.pop('password_file', None)
+-
+-        if csr is None:
+-            # Deferred import, ipaclient.csrgen is expensive to load.
+-            # see https://pagure.io/freeipa/issue/7484
+-            from ipaclient import csrgen
+-
+-            if database:
+-                adaptor = csrgen.NSSAdaptor(database, password_file)
+-            elif private_key:
+-                adaptor = csrgen.OpenSSLAdaptor(
+-                    key_filename=private_key, password_filename=password_file)
+-            else:
+-                raise errors.InvocationError(
+-                    message=u"One of 'database' or 'private_key' is required")
+-
+-            pubkey_info = adaptor.get_subject_public_key_info()
+-            pubkey_info_b64 = base64.b64encode(pubkey_info)
+-
+-            # If csr_profile_id is passed, that takes precedence.
+-            # Otherwise, use profile_id. If neither are passed, the default
+-            # in cert_get_requestdata will be used.
+-            profile_id = csr_profile_id
+-            if profile_id is None:
+-                profile_id = options.get('profile_id')
+-
+-            response = self.api.Command.cert_get_requestdata(
+-                profile_id=profile_id,
+-                principal=options.get('principal'),
+-                public_key_info=pubkey_info_b64)
+-
+-            req_info_b64 = response['result']['request_info']
+-            req_info = base64.b64decode(req_info_b64)
+-
+-            csr = adaptor.sign_csr(req_info)
+-
+-            if not csr:
+-                raise errors.CertificateOperationError(
+-                    error=(_('Generated CSR was empty')))
+-
+-        else:
+-            if database is not None or private_key is not None:
+-                raise errors.MutuallyExclusiveError(reason=_(
+-                    "Options 'database' and 'private_key' are not compatible"
+-                    " with 'csr'"))
+-
+-        return super(cert_request, self).forward(csr, **options)
+-
+ 
+ @register(override=True, no_fail=True)
+ class cert_show(CertRetrieveOverride):
+diff --git a/ipaclient/setup.py b/ipaclient/setup.py
+index ac947e772e014051ff5f231c73651bfa2fe8b061..8faa17dd1850fefd127aff83913e052e8900e5d4 100644
+--- a/ipaclient/setup.py
++++ b/ipaclient/setup.py
+@@ -42,13 +42,6 @@ if __name__ == '__main__':
+             "ipaclient.remote_plugins.2_156",
+             "ipaclient.remote_plugins.2_164",
+         ],
+-        package_data={
+-            'ipaclient': [
+-                'csrgen/profiles/*.json',
+-                'csrgen/rules/*.json',
+-                'csrgen/templates/*.tmpl',
+-            ],
+-        },
+         install_requires=[
+             "cryptography",
+             "ipalib",
+diff --git a/ipalib/errors.py b/ipalib/errors.py
+index 3a40fa28dc4b7748b2c570943f4a27a22c152353..6356d523e8c0ac63e8892292dd9991c9ee8211aa 100644
+--- a/ipalib/errors.py
++++ b/ipalib/errors.py
+@@ -1434,34 +1434,6 @@ class HTTPRequestError(RemoteRetrieveError):
+     format = _('Request failed with status %(status)s: %(reason)s')
+ 
+ 
+-class RedundantMappingRule(SingleMatchExpected):
+-    """
+-    **4036** Raised when more than one rule in a CSR generation ruleset matches
+-    a particular helper.
+-
+-    For example:
+-
+-    >>> raise RedundantMappingRule(ruleset='syntaxSubject', helper='certutil')
+-    Traceback (most recent call last):
+-      ...
+-    RedundantMappingRule: Mapping ruleset "syntaxSubject" has more than one
+-    rule for the certutil helper.
+-    """
+-
+-    errno = 4036
+-    format = _('Mapping ruleset "%(ruleset)s" has more than one rule for the'
+-               ' %(helper)s helper')
+-
+-
+-class CSRTemplateError(ExecutionError):
+-    """
+-    **4037** Raised when evaluation of a CSR generation template fails
+-    """
+-
+-    errno = 4037
+-    format = _('%(reason)s')
+-
+-
+ class BuiltinError(ExecutionError):
+     """
+     **4100** Base class for builtin execution errors (*4100 - 4199*).
+diff --git a/ipatests/setup.py b/ipatests/setup.py
+index e9a1a5be004e96a0c9f756d14ffcb0821608688a..6880f184d5acc30f962e3e481d4d62c2db7f78b8 100644
+--- a/ipatests/setup.py
++++ b/ipatests/setup.py
+@@ -39,7 +39,6 @@ if __name__ == '__main__':
+             "ipatests.test_cmdline",
+             "ipatests.test_install",
+             "ipatests.test_integration",
+-            "ipatests.test_ipaclient",
+             "ipatests.test_ipalib",
+             "ipatests.test_ipaplatform",
+             "ipatests.test_ipapython",
+@@ -53,7 +52,6 @@ if __name__ == '__main__':
+         package_data={
+             'ipatests.test_install': ['*.update'],
+             'ipatests.test_integration': ['scripts/*'],
+-            'ipatests.test_ipaclient': ['data/*/*/*'],
+             'ipatests.test_ipalib': ['data/*'],
+             'ipatests.test_ipaplatform': ['data/*'],
+             "ipatests.test_ipaserver": ['data/*'],
+diff --git a/ipatests/test_ipaclient/__init__.py b/ipatests/test_ipaclient/__init__.py
+deleted file mode 100644
+index 0c428910cabe103af3ac9bfe4cdde6678acd1585..0000000000000000000000000000000000000000
+--- a/ipatests/test_ipaclient/__init__.py
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#
+-# Copyright (C) 2016  FreeIPA Contributors see COPYING for license
+-#
+-
+-"""
+-Sub-package containing unit tests for `ipaclient` package.
+-"""
+diff --git a/ipatests/test_ipaclient/data/test_csrgen/profiles/profile.json b/ipatests/test_ipaclient/data/test_csrgen/profiles/profile.json
+deleted file mode 100644
+index 676f91bef696109976826e6e61be091718172798..0000000000000000000000000000000000000000
+--- a/ipatests/test_ipaclient/data/test_csrgen/profiles/profile.json
++++ /dev/null
+@@ -1,8 +0,0 @@
+-[
+-    {
+-        "syntax": "basic",
+-        "data": [
+-            "options"
+-        ]
+-    }
+-]
+diff --git a/ipatests/test_ipaclient/data/test_csrgen/templates/identity_base.tmpl b/ipatests/test_ipaclient/data/test_csrgen/templates/identity_base.tmpl
+deleted file mode 100644
+index 79111ab686b4fe25227796509b3cd3fcb54af728..0000000000000000000000000000000000000000
+--- a/ipatests/test_ipaclient/data/test_csrgen/templates/identity_base.tmpl
++++ /dev/null
+@@ -1 +0,0 @@
+-{{ options|join(";") }}
+-- 
+2.20.1
+

@@ -1,0 +1,97 @@
+From fc9648e33668afa1c61d62ad9e3b033011dd12d4 Mon Sep 17 00:00:00 2001
+From: Florence Blanc-Renaud <flo@redhat.com>
+Date: Fri, 26 Apr 2019 18:40:05 +0200
+Subject: [PATCH] ipactl restart: fix wrong logic when checking service list
+
+ipactl is building a list of currently running services from
+the content of /var/run/ipa/services.list, and a list of expected services
+from the services configured in LDAP.
+
+Because CA and KRA both correspond to the same pki-tomcatd service, the
+lists may contain duplicates. The code handling these duplicates is called
+at the wrong place, and may result in a wrong list of services to
+stop / restart / start.
+The fix removes the duplicates before returning the lists, hence making sure
+that there is no error when building the list of services to stop / restart
+/ start.
+
+Fixes: https://pagure.io/freeipa/issue/7927
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+---
+ install/tools/ipactl | 10 ++--------
+ 1 file changed, 2 insertions(+), 8 deletions(-)
+
+diff --git a/install/tools/ipactl b/install/tools/ipactl
+index f40ea5a6df74f04ec7e6e8959d731553651a81d3..5d858b8f9dd2a213a29c50cd2c9778b57fee9e46 100755
+--- a/install/tools/ipactl
++++ b/install/tools/ipactl
+@@ -237,7 +237,7 @@ def get_config(dirsrv):
+     for order, svc in sorted(svc_list):
+         if svc in service.SERVICE_LIST:
+             ordered_list.append(service.SERVICE_LIST[svc].systemd_name)
+-    return ordered_list
++    return deduplicate(ordered_list)
+ 
+ def get_config_from_file():
+ 
+@@ -263,7 +263,7 @@ def get_config_from_file():
+         if svc in svc_list:
+             ordered_list.append(svc)
+ 
+-    return ordered_list
++    return deduplicate(ordered_list)
+ 
+ 
+ def stop_services(svc_list):
+@@ -325,7 +325,6 @@ def ipa_start(options):
+         # no service to start
+         return
+ 
+-    svc_list = deduplicate(svc_list)
+     for svc in svc_list:
+         svchandle = services.service(svc, api=api)
+         try:
+@@ -365,7 +364,6 @@ def ipa_stop(options):
+             finally:
+                 raise IpactlError()
+ 
+-    svc_list = deduplicate(svc_list)
+     for svc in reversed(svc_list):
+         svchandle = services.service(svc, api=api)
+         try:
+@@ -452,7 +450,6 @@ def ipa_restart(options):
+ 
+     if len(old_svc_list) != 0:
+         # we need to definitely stop some services
+-        old_svc_list = deduplicate(old_svc_list)
+         for svc in reversed(old_svc_list):
+             svchandle = services.service(svc, api=api)
+             try:
+@@ -477,7 +474,6 @@ def ipa_restart(options):
+ 
+     if len(svc_list) != 0:
+         # there are services to restart
+-        svc_list = deduplicate(svc_list)
+         for svc in svc_list:
+             svchandle = services.service(svc, api=api)
+             try:
+@@ -500,7 +496,6 @@ def ipa_restart(options):
+ 
+     if len(new_svc_list) != 0:
+         # we still need to start some services
+-        new_svc_list = deduplicate(new_svc_list)
+         for svc in new_svc_list:
+             svchandle = services.service(svc, api=api)
+             try:
+@@ -552,7 +547,6 @@ def ipa_status(options):
+     if len(svc_list) == 0:
+         return
+ 
+-    svc_list = deduplicate(svc_list)
+     for svc in svc_list:
+         svchandle = services.service(svc, api=api)
+         try:
+-- 
+2.20.1
+

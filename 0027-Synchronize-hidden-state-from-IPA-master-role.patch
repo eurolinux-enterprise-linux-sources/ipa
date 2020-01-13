@@ -1,0 +1,118 @@
+From d0327f33d3bc426db5c8dd86666e680da6a44b61 Mon Sep 17 00:00:00 2001
+From: Christian Heimes <cheimes@redhat.com>
+Date: Tue, 26 Mar 2019 13:27:35 +0100
+Subject: [PATCH] Synchronize hidden state from IPA master role
+
+ipa-{adtrust|ca|dns|kra}-install on a hidden replica also installs the
+new service as hidden service.
+
+Fixes: https://pagure.io/freeipa/issue/7892
+Signed-off-by: Christian Heimes <cheimes@redhat.com>
+Reviewed-By: Thomas Woerner <twoerner@redhat.com>
+Reviewed-By: Francois Cami <fcami@redhat.com>
+---
+ install/tools/ipa-adtrust-install             |  2 +-
+ install/tools/ipa-ca-install                  |  2 +-
+ ipaserver/install/ipa_kra_install.py          |  2 +-
+ ipaserver/install/service.py                  | 22 +++++++++++++++++++
+ .../test_replica_promotion.py                 |  4 +++-
+ 5 files changed, 28 insertions(+), 4 deletions(-)
+
+diff --git a/install/tools/ipa-adtrust-install b/install/tools/ipa-adtrust-install
+index 9dbfadb6fae193e2f4a54b3a0e226e0a6b1fd26f..19bd21866119b4a23f5a6a02cc8ea37c8f5d36ea 100755
+--- a/install/tools/ipa-adtrust-install
++++ b/install/tools/ipa-adtrust-install
+@@ -213,7 +213,7 @@ def main():
+     adtrust.install(True, options, fstore, api)
+ 
+     # Enable configured services and update DNS SRV records
+-    service.enable_services(api.env.host)
++    service.sync_services_state(api.env.host)
+     api.Command.dns_update_system_records()
+ 
+     print("""
+diff --git a/install/tools/ipa-ca-install b/install/tools/ipa-ca-install
+index 55182dc30e4736618f749e78db161fc7eefe37ac..dda7a0527b07695c51140c437a2699c8634f2724 100755
+--- a/install/tools/ipa-ca-install
++++ b/install/tools/ipa-ca-install
+@@ -347,7 +347,7 @@ def main():
+     api.Backend.ldap2.connect()
+ 
+     # Enable configured services and update DNS SRV records
+-    service.enable_services(api.env.host)
++    service.sync_services_state(api.env.host)
+     api.Command.dns_update_system_records()
+     api.Backend.ldap2.disconnect()
+ 
+diff --git a/ipaserver/install/ipa_kra_install.py b/ipaserver/install/ipa_kra_install.py
+index 19260ac7f23a7c6f3a6328d4f146510a186b706e..006bc92bec581e1983f11bfd75498b5484f2567a 100644
+--- a/ipaserver/install/ipa_kra_install.py
++++ b/ipaserver/install/ipa_kra_install.py
+@@ -239,6 +239,6 @@ class KRAInstaller(KRAInstall):
+         api.Backend.ldap2.connect()
+ 
+         # Enable configured services and update DNS SRV records
+-        service.enable_services(api.env.host)
++        service.sync_services_state(api.env.host)
+         api.Command.dns_update_system_records()
+         api.Backend.ldap2.disconnect()
+diff --git a/ipaserver/install/service.py b/ipaserver/install/service.py
+index 6d7997c559f8d748f00dd9df28371c53bc12ee21..8948f64c2ec2db4cd013699e07dd94d5dba6c043 100644
+--- a/ipaserver/install/service.py
++++ b/ipaserver/install/service.py
+@@ -41,6 +41,7 @@ from ipaplatform.paths import paths
+ from ipaserver.masters import (
+     CONFIGURED_SERVICE, ENABLED_SERVICE, HIDDEN_SERVICE, SERVICE_LIST
+ )
++from ipaserver.servroles import HIDDEN
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -202,6 +203,27 @@ def hide_services(fqdn):
+     _set_services_state(fqdn, HIDDEN_SERVICE)
+ 
+ 
++def sync_services_state(fqdn):
++    """Synchronize services state from IPA master role state
++
++    Hide all services if the IPA master role state is in hidden state.
++    Otherwise enable all services.
++
++    :param fqdn: hostname of server
++    """
++    result = api.Command.server_role_find(
++        server_server=fqdn,
++        role_servrole='IPA master',
++        status=HIDDEN
++    )
++    if result['count']:
++        # one hidden server role
++        hide_services(fqdn)
++    else:
++        # IPA master is either enabled or configured, enable all
++        enable_services(fqdn)
++
++
+ def _set_services_state(fqdn, dest_state):
+     """Change all services of a host
+ 
+diff --git a/ipatests/test_integration/test_replica_promotion.py b/ipatests/test_integration/test_replica_promotion.py
+index bf028bf7dc58abb6455ba1659f2d19bede69daa2..df71972a2ba3ad503011a558295bd38f587faf44 100644
+--- a/ipatests/test_integration/test_replica_promotion.py
++++ b/ipatests/test_integration/test_replica_promotion.py
+@@ -823,9 +823,11 @@ class TestHiddenReplicaPromotion(IntegrationTest):
+         # hidden replica with CA and DNS
+         tasks.install_replica(
+             cls.master, cls.replicas[0],
+-            setup_dns=True, setup_kra=True,
++            setup_dns=True, setup_kra=False,
+             extra_args=('--hidden-replica',)
+         )
++        # manually install KRA to verify that hidden state is synced
++        tasks.install_kra(cls.replicas[0])
+ 
+     def _check_dnsrecords(self, hosts_expected, hosts_unexpected=()):
+         domain = DNSName(self.master.domain.name).make_absolute()
+-- 
+2.20.1
+

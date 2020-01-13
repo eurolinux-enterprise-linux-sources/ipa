@@ -1,0 +1,51 @@
+From bb5026c5a265b78f9c889bd818ccfac9959b7d77 Mon Sep 17 00:00:00 2001
+From: Alexander Bokovoy <abokovoy@redhat.com>
+Date: Tue, 9 Oct 2018 17:21:37 +0300
+Subject: [PATCH] adtrust: define Guests mapping after creating cifs/ principal
+
+All Samba utilities load passdb modules from the configuration file. As
+result, 'net groupmap' call would try to initialize ipasam passdb module
+and that one would try to connect to LDAP using Kerberos authentication.
+
+We should be running it after cifs/ principal is actually created in
+ipa-adtrust-install or otherwise setting up group mapping will fail.
+
+This only affects new installations. For older ones 'net groupmap' would
+work just fine because adtrust is already configured and all principals
+exist already.
+
+A re-run of 'ipa-server-upgrade' is a workaround too but better to fix
+the initial setup.
+
+Related: https://pagure.io/freeipa/issue/7705
+Reviewed-By: Rob Crittenden <rcritten@redhat.com>
+(cherry picked from commit 1ef0fe8bb824282c2f48417efda3a60e7c1bf580)
+---
+ ipaserver/install/adtrustinstance.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/ipaserver/install/adtrustinstance.py b/ipaserver/install/adtrustinstance.py
+index d6b8f5cfa66c0cfbc6d47906703fc09c3e961a53..4141d8991cf75b60dea4ec123f0e3931bb3e6976 100644
+--- a/ipaserver/install/adtrustinstance.py
++++ b/ipaserver/install/adtrustinstance.py
+@@ -845,8 +845,6 @@ class ADTRUSTInstance(service.Service):
+                   self.__create_samba_domain_object)
+         self.step("creating samba config registry", self.__write_smb_registry)
+         self.step("writing samba config file", self.__write_smb_conf)
+-        self.step("map BUILTIN\\Guests to nobody group",
+-                  self.__map_Guests_to_nobody)
+         self.step("adding cifs Kerberos principal",
+                   self.request_service_keytab)
+         self.step("adding cifs and host Kerberos principals to the adtrust agents group", \
+@@ -858,6 +856,8 @@ class ADTRUSTInstance(service.Service):
+         self.step("updating Kerberos config", self.__update_krb5_conf)
+         self.step("activating CLDAP plugin", self.__add_cldap_module)
+         self.step("activating sidgen task", self.__add_sidgen_task)
++        self.step("map BUILTIN\\Guests to nobody group",
++                  self.__map_Guests_to_nobody)
+         self.step("configuring smbd to start on boot", self.__enable)
+         self.step("adding special DNS service records", \
+                   self.__add_dns_service_records)
+-- 
+2.20.1
+

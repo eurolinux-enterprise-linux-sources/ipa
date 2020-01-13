@@ -1,0 +1,147 @@
+From 750a60a989d7c1fe0872af292191889e7e23382d Mon Sep 17 00:00:00 2001
+From: Christian Heimes <cheimes@redhat.com>
+Date: Mon, 29 Apr 2019 11:12:30 +0200
+Subject: [PATCH] Consider configured servers as valid
+
+Under some conditions, ipa config-show and several other commands were
+failing with error message:
+
+  ERROR: invalid 'PKINIT enabled server': all masters must have IPA master role enabled
+
+Amongst others the issue can be caused by a broken installation, when
+some services are left in state 'configuredServices'. The problem even
+block uninstallation or removal of replicas. Now configured servers are
+also consider valid providers for associated roles.
+
+A new test verifies that config-show works with hidden and configured HTTP
+service.
+
+Remark: The original intent of the sanity check is no longer clear to me. I
+think it was used to very that all services can be started by ipactl.
+Since ipactl starts hidden, configured, and enabled services, the new
+logic reflect the fact, too.
+
+Fixes: https://pagure.io/freeipa/issue/7929
+Signed-off-by: Christian Heimes <cheimes@redhat.com>
+Reviewed-By: Alexander Bokovoy <abokovoy@redhat.com>
+---
+ ipaserver/servroles.py                     |  9 ++-
+ ipatests/test_integration/test_commands.py | 72 ++++++++++++----------
+ 2 files changed, 45 insertions(+), 36 deletions(-)
+
+diff --git a/ipaserver/servroles.py b/ipaserver/servroles.py
+index 0988cbdd7eac599ef26c89a015523b2d92e9502f..984d4bc269fffb4c667e9b8a432b1caf8d3b4f18 100644
+--- a/ipaserver/servroles.py
++++ b/ipaserver/servroles.py
+@@ -346,11 +346,14 @@ class ServerAttribute(LDAPBasedProperty):
+     def _get_assoc_role_providers(self, api_instance):
+         """get list of all servers on which the associated role is enabled
+ 
+-        Consider a hidden server as a valid provider for a role.
++        Consider a hidden and configured server as a valid provider for a
++        role, as all services are started.
+         """
+         return [
+-            r[u'server_server'] for r in self.associated_role.status(
+-                api_instance) if r[u'status'] in {ENABLED, HIDDEN}]
++            r[u'server_server']
++            for r in self.associated_role.status(api_instance)
++            if r[u'status'] in {ENABLED, HIDDEN, CONFIGURED}
++        ]
+ 
+     def _remove(self, api_instance, masters):
+         """
+diff --git a/ipatests/test_integration/test_commands.py b/ipatests/test_integration/test_commands.py
+index b172a6dd036b5cba4d117f9160ee1ada8712c949..c20213d4b6f0b9d004a8b44afa161a60c538916f 100644
+--- a/ipatests/test_integration/test_commands.py
++++ b/ipatests/test_integration/test_commands.py
+@@ -24,10 +24,15 @@ from ipalib.constants import IPAAPI_USER
+ 
+ from ipaplatform.paths import paths
+ 
++from ipapython.dn import DN
++
++from ipaserver.masters import (
++    CONFIGURED_SERVICE, ENABLED_SERVICE, HIDDEN_SERVICE
++)
++
+ from ipatests.test_integration.base import IntegrationTest
+ from ipatests.pytest_ipa.integration import tasks
+ from ipatests.pytest_ipa.integration.create_external_ca import ExternalCA
+-from ipatests.test_ipalib.test_x509 import good_pkcs7, badcert
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -499,36 +504,37 @@ class TestIPACommand(IntegrationTest):
+         assert result.returncode != 0
+         assert 'HBAC rule not found' in result.stderr_text
+ 
+-    def test_ipa_cacert_manage_install(self):
+-        # Re-install the IPA CA
+-        self.master.run_command([
+-            paths.IPA_CACERT_MANAGE,
+-            'install',
+-            paths.IPA_CA_CRT])
+-
+-        # Test a non-existent file
+-        result = self.master.run_command([
+-            paths.IPA_CACERT_MANAGE,
+-            'install',
+-            '/var/run/cert_not_found'], raiseonerr=False)
+-        assert result.returncode == 1
++    def test_config_show_configured_services(self):
++        # https://pagure.io/freeipa/issue/7929
++        states = {CONFIGURED_SERVICE, ENABLED_SERVICE, HIDDEN_SERVICE}
++        dn = DN(
++            ('cn', 'HTTP'), ('cn', self.master.hostname), ('cn', 'masters'),
++            ('cn', 'ipa'), ('cn', 'etc'),
++            self.master.domain.basedn  # pylint: disable=no-member
++        )
+ 
+-        cmd = self.master.run_command(['mktemp'])
+-        filename = cmd.stdout_text.strip()
+-
+-        for contents in (good_pkcs7,):
+-            self.master.put_file_contents(filename, contents)
+-            result = self.master.run_command([
+-                paths.IPA_CACERT_MANAGE,
+-                'install',
+-                filename])
+-
+-        for contents in (badcert,):
+-            self.master.put_file_contents(filename, contents)
+-            result = self.master.run_command([
+-                paths.IPA_CACERT_MANAGE,
+-                'install',
+-                filename], raiseonerr=False)
+-            assert result.returncode == 1
+-
+-        self.master.run_command(['rm', '-f', filename])
++        conn = self.master.ldap_connect()
++        entry = conn.get_entry(dn)  # pylint: disable=no-member
++
++        # original setting and all settings without state
++        orig_cfg = list(entry['ipaConfigString'])
++        other_cfg = [item for item in orig_cfg if item not in states]
++
++        try:
++            # test with hidden
++            cfg = [HIDDEN_SERVICE]
++            cfg.extend(other_cfg)
++            entry['ipaConfigString'] = cfg
++            conn.update_entry(entry)  # pylint: disable=no-member
++            self.master.run_command(['ipa', 'config-show'])
++
++            # test with configured
++            cfg = [CONFIGURED_SERVICE]
++            cfg.extend(other_cfg)
++            entry['ipaConfigString'] = cfg
++            conn.update_entry(entry)  # pylint: disable=no-member
++            self.master.run_command(['ipa', 'config-show'])
++        finally:
++            # reset
++            entry['ipaConfigString'] = orig_cfg
++            conn.update_entry(entry)  # pylint: disable=no-member
+-- 
+2.20.1
+

@@ -1,0 +1,48 @@
+From dfb08e295420a9ea92776fa99cd1b7fe6a6badaa Mon Sep 17 00:00:00 2001
+From: Alexander Bokovoy <abokovoy@redhat.com>
+Date: Sat, 11 May 2019 11:54:40 +0300
+Subject: [PATCH] upgrade: adtrust - catch empty result when retrieving list of
+ trusts
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Upgrade failure when ipa-server-upgrade is being run on a system with no
+trust established but trust configured
+
+Fixes: https://pagure.io/freeipa/issue/7939
+Reviewed-By: François Cami <fcami@redhat.com>
+---
+ ipaserver/install/plugins/adtrust.py | 16 +++++++++++-----
+ 1 file changed, 11 insertions(+), 5 deletions(-)
+
+diff --git a/ipaserver/install/plugins/adtrust.py b/ipaserver/install/plugins/adtrust.py
+index 1461e000dc855a21665eb5ea0cfe4a47df419344..55df5cd01fd0f585d5955e700ccf20c7fc9a747f 100644
+--- a/ipaserver/install/plugins/adtrust.py
++++ b/ipaserver/install/plugins/adtrust.py
+@@ -610,11 +610,17 @@ class update_tdo_to_new_layout(Updater):
+ 
+         trusts_dn = self.api.env.container_adtrusts + self.api.env.basedn
+ 
+-        trusts = ldap.get_entries(
+-            base_dn=trusts_dn,
+-            scope=ldap.SCOPE_ONELEVEL,
+-            filter=self.trust_filter,
+-            attrs_list=self.trust_attrs)
++        # We might be in a situation when no trusts exist yet
++        # In such case there is nothing to upgrade but we have to catch
++        # an exception or it will abort the whole upgrade process
++        try:
++            trusts = ldap.get_entries(
++                base_dn=trusts_dn,
++                scope=ldap.SCOPE_ONELEVEL,
++                filter=self.trust_filter,
++                attrs_list=self.trust_attrs)
++        except errors.EmptyResult:
++            trusts = []
+ 
+         # For every trust, retrieve its principals and convert
+         for t_entry in trusts:
+-- 
+2.20.1
+

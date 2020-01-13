@@ -1,0 +1,176 @@
+# -*- coding: utf-8 -*-
+
+The following people have contributed to the FreeIPA project.
+(Listed in alphabetical order within category)
+
+Developers:
+	Timo Aaltonen
+	Gabe Alford
+	Jr Aquino
+	Tomáš Babej
+	Martin Babinsky
+	Kyle Baker
+	Felipe Barreto
+	Jan Barta
+	Martin Bašti
+	Sylvain Baubeau
+	Florence Blanc-Renaud
+	Alexander Bokovoy
+	Thierry Bordaz
+	Sumit Bose
+	François Cami
+	Petr Čech
+	Xiao-Long Chen
+	Jan Cholasta
+	Yuri Chornoivan
+	Brian Cook
+	Rob Crittenden
+	Frank Cusack
+	Nalin Dahyabhai
+	Rishabh Dave
+	Don Davis
+	John Dennis
+	Jason Gerard DeRose
+	Günther Deschner
+	Endi Sukma Dewata
+	Lenka Doudova
+	Benjamin Drung
+	Patrice Duc-Jacquet
+	Tibor Dudlák
+	Lewis Eason
+	Drew Erny
+	Oleg Fayans
+	felipe
+	Jérôme Fenal
+	Fabiano Fidêncio
+	Stephen Gallagher
+	René Genz
+	James Groffen
+	Oliver Gutierrez
+	Ondřej Hamada
+	Nick Hatch
+	Christian Heimes
+	Jakub Hrozek
+	Ganna Kaihorodova
+	Abhijeet Kasurde
+	Nathan Kinder
+	Krzysztof Klimonda
+	Alexander Koksharov
+	Nikolai Kondrashov
+	Martin Košek
+	David Kreitschmann
+	Ludwig Krispenz
+	Ana Krivokapić
+	Tomáš Křížek
+	Milan Kubík
+	Ian Kumlien
+	David Kupka
+	Robert Kuska
+	Peter Lacko
+	Stanislav Laznicka
+	Ade Lee
+	Ben Lipton
+	Karl MacMillan
+	Niranjan Mallapadi
+	Ales 'alich' Marecek
+	Francesco Marella
+	Nathaniel McCallum
+	William Jon McCann
+	Kevin McCarthy
+	Mark McLoughlin
+	Rich Megginson
+	Jim Meyering
+	Adam Misnyovszki
+	John Morris
+	Niranjan MR
+	Marko Myllynen
+	Martin Nagy
+	David O'Brien
+	Dmitri Pal
+	Jan Pazdziora
+	W. Michael Petullo
+	Gowrishankar Rajaiyan
+	realsobek
+	Michal Reznik
+	Lubomír Rintel
+	Matt Rogers
+	Lynn Root
+	Pete Rowley
+	Lenka Ryznarova
+	Thorsten Scherf
+	shanyin
+	Michael Simacek
+	Lars Sjostrom
+	Filip Skola
+	Aleksei Slaikovskii
+	Lukáš Slebodník
+	Simo Sorce
+	Petr Špaček
+	David Spångberg
+	Diane Trout
+	Fraser Tweedale
+	Petr Viktorin
+	Petr Voborník
+	Felipe Volpone
+	Pavel Vomáčka
+	Andrew Wnuk
+	Jason Woods
+	Adam Young
+	Mohammad Rizwan Yusuf
+	Jan Zelený
+	Alex Zeleznikov
+	Michal Židek
+	Pavel Zůna
+
+Documentation:
+	Gabe Alford
+	Martin Bašti
+	Tomáš Čapek
+	Ella Deon Lackey
+	David O'Brien
+
+Testing:
+	Xiyang Dong
+	Michael Gregg
+	Steeve Goveas
+	Suzanne Hillman
+	Chandrasekar Kannan
+	Namita Krishnan
+	Varun Mylaraiah
+	Scott Poore
+	Gowrishankar Rajaiyan
+	Jenny Severance
+	Kaleemullah Siddiqui
+	Yi Zhang
+
+Translators:
+	Héctor Daniel Cabrera
+	Yuri Chornoivan
+	Teguh DC
+	Piotr Drąg
+	Jérôme Fenal
+	Gundachandru
+	Jake Li
+	Andrew Martynov
+	Sankarshan Mukhopadhyay
+
+Wiki, Solution and Idea Contributors:
+	James Hogarth
+	Dale Macartney
+	Viji V Nair
+	Bryce Nordgren
+	Ryan Thompson
+	David Zeuthen
+
+Graphic Design and User Interaction Design:
+	Kyle Baker
+	Máirín Duffy
+
+Management:
+	Scott Haines
+	Nathan Kinder
+	Martin Košek
+	Bob Lord
+	Dmitri Pal
+	Kevin Unthank
+	Karl Wirth

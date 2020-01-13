@@ -1,0 +1,27 @@
+--- ipa.spec	2017-08-02 17:21:26.120650176 -0500
++++ ipa.spec	2017-08-02 17:24:27.415773525 -0500
+@@ -360,6 +360,7 @@ BuildRequires:  python-netaddr
+ BuildRequires:  python-pyasn1
+ BuildRequires:  python-pyasn1-modules
+ BuildRequires:  python-dns
++BuildRequires:  scientific-linux-logos >= 70.0.3-0.8.el7
+ BuildRequires:  python-six
+ BuildRequires:  python-libsss_nss_idmap
+ BuildRequires:  python-cffi
+@@ -1084,12 +1085,10 @@ done
+ cp -r %{_builddir}/freeipa-%{version} %{_builddir}/freeipa-%{version}-python3
+ %endif # with_python3
+ 
+-# RHEL spec file only: START: Change branding to IPA and Identity Management
+-cp %SOURCE1 install/ui/images/header-logo.png
+-cp %SOURCE2 install/ui/images/login-screen-background.jpg
+-cp %SOURCE3 install/ui/images/login-screen-logo.png
+-cp %SOURCE4 install/ui/images/product-name.png
+-# RHEL spec file only: END: Change branding to IPA and Identity Management
++%{__cp} /usr/share/sl-logos/os-name-white.png install/ui/images/header-logo.png
++%{__cp} /usr/share/backgrounds/Fixation-1.jpg install/ui/images/login-screen-background.jpg
++%{__cp} /usr/share/pixmaps/system-logo-white.png install/ui/images/login-screen-logo.png
++%{__cp} /usr/share/sl-logos/os-name-white-big.png install/ui/images/product-name.png
+ 
+ 
+ %build

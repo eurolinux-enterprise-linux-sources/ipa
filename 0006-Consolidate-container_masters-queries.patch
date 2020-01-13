@@ -1,0 +1,316 @@
+From 406a70cb9e481fb194bbbc67461f3cfd3c97a108 Mon Sep 17 00:00:00 2001
+From: Christian Heimes <cheimes@redhat.com>
+Date: Wed, 27 Mar 2019 11:30:40 +0100
+Subject: [PATCH] Consolidate container_masters queries
+
+Replace manual queries of container_masters with new APIs get_masters()
+and is_service_enabled().
+
+Signed-off-by: Christian Heimes <cheimes@redhat.com>
+Reviewed-By: Thomas Woerner <twoerner@redhat.com>
+---
+ ipaserver/install/bindinstance.py |  8 ++---
+ ipaserver/install/ipa_restore.py  | 12 ++------
+ ipaserver/masters.py              | 51 +++++++++++++++++++++++++++++++
+ ipaserver/plugins/cert.py         | 15 +++------
+ ipaserver/plugins/dns.py          | 49 ++++-------------------------
+ ipaserver/plugins/user.py         | 15 ++-------
+ ipaserver/plugins/vault.py        | 12 ++------
+ 7 files changed, 70 insertions(+), 92 deletions(-)
+
+diff --git a/ipaserver/install/bindinstance.py b/ipaserver/install/bindinstance.py
+index 6156ecdfbd1a62d5b1e0a26db47ef2b9a9448bc1..940667db9c40559d5369188395bb18f2d1eac025 100644
+--- a/ipaserver/install/bindinstance.py
++++ b/ipaserver/install/bindinstance.py
+@@ -40,6 +40,7 @@ from ipaserver.dns_data_management import (
+ from ipaserver.install import installutils
+ from ipaserver.install import service
+ from ipaserver.install import sysupgrade
++from ipaserver.masters import get_masters
+ from ipapython import ipautil
+ from ipapython import dnsutil
+ from ipapython.dnsutil import DNSName
+@@ -1037,13 +1038,8 @@ class BindInstance(service.Service):
+             cname_fqdn[cname] = fqdn
+ 
+         # get FQDNs of all IPA masters
+-        ldap = self.api.Backend.ldap2
+         try:
+-            entries = ldap.get_entries(
+-                DN(('cn', 'masters'), ('cn', 'ipa'), ('cn', 'etc'),
+-                   self.api.env.basedn),
+-                ldap.SCOPE_ONELEVEL, None, ['cn'])
+-            masters = set(e['cn'][0] for e in entries)
++            masters = set(get_masters(self.api.Backend.ldap2))
+         except errors.NotFound:
+             masters = set()
+ 
+diff --git a/ipaserver/install/ipa_restore.py b/ipaserver/install/ipa_restore.py
+index bd065a038db4d523048f0566f65458402d801e18..c7e996bbe284a7eb2d03fbedb4798d3b15f3dcc0 100644
+--- a/ipaserver/install/ipa_restore.py
++++ b/ipaserver/install/ipa_restore.py
+@@ -41,6 +41,7 @@ from ipaserver.install.replication import (wait_for_task, ReplicationManager,
+                                            get_cs_replication_manager)
+ from ipaserver.install import installutils
+ from ipaserver.install import dsinstance, httpinstance, cainstance, krbinstance
++from ipaserver.masters import get_masters
+ from ipapython import ipaldap
+ import ipapython.errors
+ from ipaplatform.constants import constants
+@@ -485,16 +486,7 @@ class Restore(admintool.AdminTool):
+             logger.error('Unable to get connection, skipping disabling '
+                          'agreements: %s', e)
+             return
+-        masters = []
+-        dn = DN(('cn', 'masters'), ('cn', 'ipa'), ('cn', 'etc'), api.env.basedn)
+-        try:
+-            entries = conn.get_entries(dn, conn.SCOPE_ONELEVEL)
+-        except Exception as e:
+-            raise admintool.ScriptError(
+-                "Failed to read master data: %s" % e)
+-        else:
+-            masters = [ent.single_value['cn'] for ent in entries]
+-
++        masters = get_masters(conn)
+         for master in masters:
+             if master == api.env.host:
+                 continue
+diff --git a/ipaserver/masters.py b/ipaserver/masters.py
+index 171c3abe0d6eea5aa6bcc642815eceae3ae885e7..6fa8f02332ceaa10ec30aa5142912f351fb58936 100644
+--- a/ipaserver/masters.py
++++ b/ipaserver/masters.py
+@@ -121,3 +121,54 @@ def find_providing_server(svcname, conn=None, preferred_hosts=(), api=api):
+         return None
+     else:
+         return servers[0]
++
++
++def get_masters(conn=None, api=api):
++    """Get all master hostnames
++
++    :param conn: a connection to the LDAP server
++    :param api: ipalib.API instance
++    :return: list of hostnames
++    """
++    if conn is None:
++        conn = api.Backend.ldap2
++
++    dn = DN(api.env.container_masters, api.env.basedn)
++    entries = conn.get_entries(dn, conn.SCOPE_ONELEVEL, None, ['cn'])
++    return list(e['cn'][0] for e in entries)
++
++
++def is_service_enabled(svcname, conn=None, api=api):
++    """Check if service is enabled on any master
++
++    The check function only looks for presence of service entries. It
++    ignores enabled/hidden flags.
++
++    :param svcname: The service to find
++    :param conn: a connection to the LDAP server
++    :param api: ipalib.API instance
++    :return: True/False
++    """
++    if svcname not in SERVICE_LIST:
++        raise ValueError("Unknown service '{}'.".format(svcname))
++    if conn is None:
++        conn = api.Backend.ldap2
++
++    dn = DN(api.env.container_masters, api.env.basedn)
++    query_filter = conn.make_filter(
++        {
++            'objectClass': 'ipaConfigObject',
++            'cn': svcname
++        },
++        rules='&'
++    )
++    try:
++        conn.find_entries(
++            filter=query_filter,
++            attrs_list=[],
++            base_dn=dn
++        )
++    except errors.NotFound:
++        return False
++    else:
++        return True
+diff --git a/ipaserver/plugins/cert.py b/ipaserver/plugins/cert.py
+index ff750e9d38ff98e0e1fa1c2eee5a3d0719da94bf..36a7a859292b2ddb9dd721e2bf786c6be130f323 100644
+--- a/ipaserver/plugins/cert.py
++++ b/ipaserver/plugins/cert.py
+@@ -55,7 +55,9 @@ from ipalib import output
+ from ipapython import dnsutil, kerberos
+ from ipapython.dn import DN
+ from ipaserver.plugins.service import normalize_principal, validate_realm
+-from ipaserver.masters import ENABLED_SERVICE, CONFIGURED_SERVICE
++from ipaserver.masters import (
++    ENABLED_SERVICE, CONFIGURED_SERVICE, is_service_enabled
++)
+ 
+ try:
+     import pyhbac
+@@ -1908,14 +1910,5 @@ class ca_is_enabled(Command):
+     has_output = output.standard_value
+ 
+     def execute(self, *args, **options):
+-        base_dn = DN(('cn', 'masters'), ('cn', 'ipa'), ('cn', 'etc'),
+-                     self.api.env.basedn)
+-        filter = '(&(objectClass=ipaConfigObject)(cn=CA))'
+-        try:
+-            self.api.Backend.ldap2.find_entries(
+-                base_dn=base_dn, filter=filter, attrs_list=[])
+-        except errors.NotFound:
+-            result = False
+-        else:
+-            result = True
++        result = is_service_enabled('CA', conn=self.api.Backend.ldap2)
+         return dict(result=result, value=pkey_to_value(None, options))
+diff --git a/ipaserver/plugins/dns.py b/ipaserver/plugins/dns.py
+index 3c006c5701a426cc03971c9e3361dfd091770241..d6baa2fc1769701ac62b8c6d686fbed74ea3f002 100644
+--- a/ipaserver/plugins/dns.py
++++ b/ipaserver/plugins/dns.py
+@@ -86,6 +86,7 @@ from ipaserver.dns_data_management import (
+     IPASystemRecords,
+     IPADomainIsNotManagedByIPAError,
+ )
++from ipaserver.masters import find_providing_servers, is_service_enabled
+ 
+ if six.PY3:
+     unicode = str
+@@ -1593,19 +1594,7 @@ def dnssec_installed(ldap):
+     :param ldap: ldap connection
+     :return: True if DNSSEC was installed, otherwise False
+     """
+-    dn = DN(api.env.container_masters, api.env.basedn)
+-
+-    filter_attrs = {
+-        u'cn': u'DNSSEC',
+-        u'objectclass': u'ipaConfigObject',
+-    }
+-    only_masters_f = ldap.make_filter(filter_attrs, rules=ldap.MATCH_ALL)
+-
+-    try:
+-        ldap.find_entries(filter=only_masters_f, base_dn=dn)
+-    except errors.NotFound:
+-        return False
+-    return True
++    return is_service_enabled('DNSSEC', conn=ldap)
+ 
+ 
+ def default_zone_update_policy(zone):
+@@ -3191,24 +3180,9 @@ class dnsrecord(LDAPObject):
+         return cliname
+ 
+     def get_dns_masters(self):
+-        ldap = self.api.Backend.ldap2
+-        base_dn = DN(('cn', 'masters'), ('cn', 'ipa'), ('cn', 'etc'), self.api.env.basedn)
+-        ldap_filter = '(&(objectClass=ipaConfigObject)(cn=DNS))'
+-        dns_masters = []
+-
+-        try:
+-            entries = ldap.find_entries(filter=ldap_filter, base_dn=base_dn)[0]
+-
+-            for entry in entries:
+-                try:
+-                    master = entry.dn[1]['cn']
+-                    dns_masters.append(master)
+-                except (IndexError, KeyError):
+-                    pass
+-        except errors.NotFound:
+-            return []
+-
+-        return dns_masters
++        return find_providing_servers(
++            'DNS', self.api.Backend.ldap2, preferred_hosts=[api.env.host]
++        )
+ 
+     def get_record_entry_attrs(self, entry_attrs):
+         entry_attrs = entry_attrs.copy()
+@@ -4077,19 +4051,8 @@ class dns_is_enabled(Command):
+     NO_CLI = True
+     has_output = output.standard_value
+ 
+-    base_dn = DN(('cn', 'masters'), ('cn', 'ipa'), ('cn', 'etc'), api.env.basedn)
+-    filter = '(&(objectClass=ipaConfigObject)(cn=DNS))'
+-
+     def execute(self, *args, **options):
+-        ldap = self.api.Backend.ldap2
+-        dns_enabled = False
+-
+-        try:
+-            ldap.find_entries(filter=self.filter, base_dn=self.base_dn)
+-            dns_enabled = True
+-        except errors.EmptyResult:
+-            dns_enabled = False
+-
++        dns_enabled = is_service_enabled('DNS', conn=self.api.Backend.ldap2)
+         return dict(result=dns_enabled, value=pkey_to_value(None, options))
+ 
+ 
+diff --git a/ipaserver/plugins/user.py b/ipaserver/plugins/user.py
+index 1aa19ab3c2763983b2216e332013b45df1a4a496..980385dc83e93ec4a65726077b34917e21115efa 100644
+--- a/ipaserver/plugins/user.py
++++ b/ipaserver/plugins/user.py
+@@ -69,6 +69,7 @@ from ipapython.dn import DN
+ from ipapython.ipaldap import LDAPClient
+ from ipapython.ipautil import ipa_generate_password, TMP_PWD_ENTROPY_BITS
+ from ipalib.capabilities import client_has_capability
++from ipaserver.masters import get_masters
+ 
+ if six.PY3:
+     unicode = str
+@@ -1105,21 +1106,11 @@ class user_status(LDAPQuery):
+         attr_list = ['krbloginfailedcount', 'krblastsuccessfulauth', 'krblastfailedauth', 'nsaccountlock']
+ 
+         disabled = False
+-        masters = []
+-        # Get list of masters
+-        try:
+-            masters, _truncated = ldap.find_entries(
+-                None, ['*'], DN(('cn', 'masters'), ('cn', 'ipa'), ('cn', 'etc'), api.env.basedn),
+-                ldap.SCOPE_ONELEVEL
+-            )
+-        except errors.NotFound:
+-            # If this happens we have some pretty serious problems
+-            logger.error('No IPA masters found!')
++        masters = get_masters(ldap)
+ 
+         entries = []
+         count = 0
+-        for master in masters:
+-            host = master['cn'][0]
++        for host in masters:
+             if host == api.env.host:
+                 other_ldap = self.obj.backend
+             else:
+diff --git a/ipaserver/plugins/vault.py b/ipaserver/plugins/vault.py
+index 682f6bea74df024bd28e15157c9b809888d08c38..a2603217cc3b79c6ec891b4deadeea91364eeeb9 100644
+--- a/ipaserver/plugins/vault.py
++++ b/ipaserver/plugins/vault.py
+@@ -34,6 +34,7 @@ from .service import normalize_principal, validate_realm
+ from ipalib import _, ngettext
+ from ipapython import kerberos
+ from ipapython.dn import DN
++from ipaserver.masters import is_service_enabled
+ 
+ if api.env.in_server:
+     import pki.account
+@@ -1220,14 +1221,5 @@ class kra_is_enabled(Command):
+     has_output = output.standard_value
+ 
+     def execute(self, *args, **options):
+-        base_dn = DN(('cn', 'masters'), ('cn', 'ipa'), ('cn', 'etc'),
+-                     self.api.env.basedn)
+-        filter = '(&(objectClass=ipaConfigObject)(cn=KRA))'
+-        try:
+-            self.api.Backend.ldap2.find_entries(
+-                base_dn=base_dn, filter=filter, attrs_list=[])
+-        except errors.NotFound:
+-            result = False
+-        else:
+-            result = True
++        result = is_service_enabled('KRA', conn=self.api.Backend.ldap2)
+         return dict(result=result, value=pkey_to_value(None, options))
+-- 
+2.20.1
+

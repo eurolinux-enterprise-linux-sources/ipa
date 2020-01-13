@@ -1,0 +1,55 @@
+From 853b56f4096734c47a26cf11767a7d6d582b11eb Mon Sep 17 00:00:00 2001
+From: Rob Crittenden <rcritten@redhat.com>
+Date: Mon, 25 Jun 2018 17:04:16 -0400
+Subject: [PATCH] Extend CALessBase::installer_server to accept extra_args
+
+Allow callers to pass abitrary extra arguments to the installer.
+
+This is useful when using a CALess installation in order to
+speed up tests that require a full install but do not require
+a full PKI.
+
+Reviewed-By: Rob Crittenden <rcritten@redhat.com>
+Reviewed-By: Alexander Bokovoy <abokovoy@redhat.com>
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+---
+ ipatests/test_integration/test_caless.py | 16 +++++++++++-----
+ 1 file changed, 11 insertions(+), 5 deletions(-)
+
+diff --git a/ipatests/test_integration/test_caless.py b/ipatests/test_integration/test_caless.py
+index ff8d95caa6fed00d3876f1d08e2170a9587a6d86..1ebe8fa368b88e949c0bd30bfc3999bf15c4df66 100644
+--- a/ipatests/test_integration/test_caless.py
++++ b/ipatests/test_integration/test_caless.py
+@@ -171,7 +171,7 @@ class CALessBase(IntegrationTest):
+                        http_pin=_DEFAULT, dirsrv_pin=_DEFAULT, pkinit_pin=None,
+                        root_ca_file='root.pem', pkinit_pkcs12_exists=False,
+                        pkinit_pkcs12='server-kdc.p12', unattended=True,
+-                       stdin_text=None):
++                       stdin_text=None, extra_args=None):
+         """Install a CA-less server
+ 
+         Return value is the remote ipa-server-install command
+@@ -179,10 +179,16 @@ class CALessBase(IntegrationTest):
+         if host is None:
+             host = cls.master
+ 
+-        extra_args = ['--http-cert-file', http_pkcs12,
+-                      '--dirsrv-cert-file', dirsrv_pkcs12,
+-                      '--ca-cert-file', root_ca_file,
+-                      '--ip-address', host.ip]
++        std_args = [
++            '--http-cert-file', http_pkcs12,
++            '--dirsrv-cert-file', dirsrv_pkcs12,
++            '--ca-cert-file', root_ca_file,
++            '--ip-address', host.ip
++        ]
++        if extra_args:
++            extra_args.extend(std_args)
++        else:
++            extra_args = std_args
+ 
+         if http_pin is _DEFAULT:
+             http_pin = cls.cert_password
+-- 
+2.20.1
+

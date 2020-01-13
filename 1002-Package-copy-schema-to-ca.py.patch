@@ -1,0 +1,44 @@
+From bf981a8e9c5149aedeb1a7b5195aa52b8daf9f79 Mon Sep 17 00:00:00 2001
+From: Jan Cholasta <jcholast@redhat.com>
+Date: Tue, 14 Mar 2017 16:07:15 +0000
+Subject: [PATCH] Package copy-schema-to-ca.py
+
+This reverts commit f4c7f1dd8a9ce530a8291219a904686ee47e59c7.
+---
+ freeipa.spec.in                 | 1 +
+ ipaserver/install/cainstance.py | 6 ++++--
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/freeipa.spec.in b/freeipa.spec.in
+index a18a5b4aab335ad104f1263fa3ae8b26659c3095..093df7e2bb3d11381e37a6d150858c1f1680b61d 100644
+--- a/freeipa.spec.in
++++ b/freeipa.spec.in
+@@ -1489,6 +1489,7 @@ fi
+ # END
+ %dir %{_usr}/share/ipa
+ %{_usr}/share/ipa/wsgi.py*
++%{_usr}/share/ipa/copy-schema-to-ca.py*
+ %{_usr}/share/ipa/kdcproxy.wsgi
+ %{_usr}/share/ipa/*.ldif
+ %{_usr}/share/ipa/*.uldif
+diff --git a/ipaserver/install/cainstance.py b/ipaserver/install/cainstance.py
+index 1f22d120478a6d4019663281d3191a27a5ee09ea..6f49b8bfa88e00388aec17f26169aa3df399193d 100644
+--- a/ipaserver/install/cainstance.py
++++ b/ipaserver/install/cainstance.py
+@@ -1579,9 +1579,11 @@ def replica_ca_install_check(config, promote):
+     else:
+         logger.critical(
+             'The master CA directory server does not have necessary schema. '
+-            'Please run copy-schema-to-ca.py on all CA masters.\n'
++            'Please copy the following script to all CA masters and run it '
++            'on them: %s\n'
+             'If you are certain that this is a false positive, use '
+-            '--skip-schema-check.')
++            '--skip-schema-check.',
++            os.path.join(paths.USR_SHARE_IPA_DIR, 'copy-schema-to-ca.py'))
+         sys.exit('IPA schema missing on master CA directory server')
+ 
+ 
+-- 
+2.20.1
+

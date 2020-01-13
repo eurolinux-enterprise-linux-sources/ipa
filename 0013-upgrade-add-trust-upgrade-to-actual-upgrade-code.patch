@@ -1,0 +1,28 @@
+From 25166da75410026b9b634535caacb7747cd88cd1 Mon Sep 17 00:00:00 2001
+From: Alexander Bokovoy <abokovoy@redhat.com>
+Date: Fri, 22 Mar 2019 19:08:33 +0200
+Subject: [PATCH] upgrade: add trust upgrade to actual upgrade code
+
+Fixes: https://pagure.io/freeipa/issue/6077
+(cherry picked from commit f51f90e4b4bac032e076ab0f6cb3dfecb5ae12ce)
+
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+---
+ install/updates/90-post_upgrade_plugins.update | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/install/updates/90-post_upgrade_plugins.update b/install/updates/90-post_upgrade_plugins.update
+index 4e9378d9b567842e1cc9a8eeae819a931810895d..a9f5f6a924d330b924d9adb8b7eee728258f27c6 100644
+--- a/install/updates/90-post_upgrade_plugins.update
++++ b/install/updates/90-post_upgrade_plugins.update
+@@ -11,6 +11,7 @@ plugin: update_sids
+ plugin: update_default_range
+ plugin: update_default_trust_view
+ plugin: update_tdo_gidnumber
++plugin: update_tdo_to_new_layout
+ plugin: update_ca_renewal_master
+ plugin: update_idrange_type
+ plugin: update_pacs
+-- 
+2.20.1
+

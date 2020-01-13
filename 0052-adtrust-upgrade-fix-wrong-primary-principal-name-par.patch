@@ -1,0 +1,95 @@
+From ca4e0582489a432a1f61fc75a27ef831e911f0fe Mon Sep 17 00:00:00 2001
+From: Alexander Bokovoy <abokovoy@redhat.com>
+Date: Thu, 27 Jun 2019 11:56:08 +0300
+Subject: [PATCH] adtrust upgrade: fix wrong primary principal name, part 2
+
+Second part of the trust principals upgrade
+
+For existing LOCAL-FLAT$@REMOTE object, convert it to
+krbtgt/LOCAL-FLAT@REMOTE and add LOCAL-FLAT$@REMOTE as an alias. To do
+so we need to modify an entry content a bit so it is better to remove
+the old entry and create a new one instead of renaming.
+
+Resolves: https://pagure.io/freeipa/issue/7992
+Reviewed-By: Florence Blanc-Renaud <flo@redhat.com>
+---
+ ipaserver/install/plugins/adtrust.py | 36 +++++++++++++++++++++++-----
+ 1 file changed, 30 insertions(+), 6 deletions(-)
+
+diff --git a/ipaserver/install/plugins/adtrust.py b/ipaserver/install/plugins/adtrust.py
+index f810522b236d8c04f4a417aac8fd3717563c358e..12596d5bfe71c16a2cb87acb755a88051676e3e5 100644
+--- a/ipaserver/install/plugins/adtrust.py
++++ b/ipaserver/install/plugins/adtrust.py
+@@ -513,16 +513,19 @@ class update_tdo_to_new_layout(Updater):
+ 
+         if isinstance(principals, (list, tuple)):
+             trust_principal = principals[0]
+-            aliases = principals[1:]
++            alias = principals[1]
+         else:
+             trust_principal = principals
+-            aliases = []
++            alias = None
+ 
++        entry = None
++        en = None
+         try:
+             entry = ldap.get_entry(
+                 DN(('krbprincipalname', trust_principal), trustdn))
+             dn = entry.dn
+             action = ldap.update_entry
++            ticket_flags = int(entry.single_value.get('krbticketflags', 0))
+             logger.debug("Updating Kerberos principal entry for %s",
+                          trust_principal)
+         except errors.NotFound:
+@@ -531,6 +534,19 @@ class update_tdo_to_new_layout(Updater):
+             if flags & self.KRB_PRINC_MUST_EXIST:
+                 raise
+ 
++            ticket_flags = 0
++            if alias:
++                try:
++                    en = ldap.get_entry(
++                        DN(('krbprincipalname', alias), trustdn))
++                    ldap.delete_entry(en.dn)
++                    ticket_flags = int(en.single_value.get(
++                        'krbticketflags', 0))
++                except errors.NotFound:
++                    logger.debug("Entry for alias TDO does not exist for "
++                                 "trusted domain object %s, skip it",
++                                 alias)
++
+             dn = DN(('krbprincipalname', trust_principal), trustdn)
+             entry = ldap.make_entry(dn)
+             logger.debug("Adding Kerberos principal entry for %s",
+@@ -545,15 +561,23 @@ class update_tdo_to_new_layout(Updater):
+             'krbprincipalname': [trust_principal],
+         }
+ 
+-        entry_data['krbprincipalname'].extend(aliases)
+-
+         if flags & self.KRB_PRINC_CREATE_DISABLED:
+-            flg = int(entry.single_value.get('krbticketflags', 0))
+-            entry_data['krbticketflags'] = flg | self.KRB_DISALLOW_ALL_TIX
++            entry_data['krbticketflags'] = (ticket_flags |
++                                            self.KRB_DISALLOW_ALL_TIX)
+ 
+         if flags & self.KRB_PRINC_CREATE_AGENT_PERMISSION:
+             entry_data['objectclass'].extend(['ipaAllowedOperations'])
+ 
++        if alias:
++            entry_data['krbprincipalname'].extend([alias])
++            if en:
++                entry_data['krbprincipalkey'] = en.single_value.get(
++                    'krbprincipalkey')
++                entry_data['krbextradata'] = en.single_value.get(
++                    'krbextradata')
++                entry_data['ipaAllowedToPerform;read_keys'] = en.get(
++                    'ipaAllowedToPerform;read_keys', [])
++
+         entry.update(entry_data)
+         try:
+             action(entry)
+-- 
+2.20.1
+

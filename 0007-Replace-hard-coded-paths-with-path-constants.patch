@@ -1,0 +1,570 @@
+From f4995135a97531819503632e72f9910101f5ce61 Mon Sep 17 00:00:00 2001
+From: Christian Heimes <cheimes@redhat.com>
+Date: Wed, 7 Feb 2018 17:18:07 +0100
+Subject: [PATCH] Replace hard-coded paths with path constants
+
+Several run() calls used hard-coded paths rather than pre-defined paths
+from ipaplatform.paths. The patch fixes all places that I was able to
+find with a simple search.
+
+The fix simplifies Darix's port of freeIPA on openSuSE.
+
+Signed-off-by: Christian Heimes <cheimes@redhat.com>
+Reviewed-By: Rob Crittenden <rcritten@redhat.com>
+(cherry picked from commit 2391c75e3d7efcdc5c2f49defa5138fc7e6def06)
+
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+---
+ client/ipa-client-automount                   |  2 +-
+ install/tools/ipa-adtrust-install             |  2 +-
+ install/tools/ipa-ca-install                  |  2 +-
+ install/tools/ipa-dns-install                 |  2 +-
+ ipaclient/install/client.py                   | 10 ++++----
+ ipaplatform/base/paths.py                     |  8 +++++++
+ ipapython/kernel_keyring.py                   | 24 +++++++++++++------
+ ipaserver/install/adtrustinstance.py          |  6 +++--
+ ipaserver/install/installutils.py             | 17 +++++++++----
+ ipaserver/install/ipa_backup.py               |  6 ++---
+ ipaserver/install/ipa_restore.py              |  4 ++--
+ ipaserver/install/krbinstance.py              |  2 +-
+ ipatests/pytest_ipa/integration/__init__.py   |  3 ++-
+ ipatests/test_integration/test_caless.py      |  2 +-
+ ipatests/test_ipapython/test_ipautil.py       | 15 ++++++------
+ .../test_caacl_profile_enforcement.py         |  3 ++-
+ ipatests/test_xmlrpc/test_cert_plugin.py      |  2 +-
+ 17 files changed, 70 insertions(+), 40 deletions(-)
+
+diff --git a/client/ipa-client-automount b/client/ipa-client-automount
+index ee55d655c9531c8fb7baebd0e7a99f3db484f7db..6c2816c410642967e95a7b1eb60583600a7f5fb0 100755
+--- a/client/ipa-client-automount
++++ b/client/ipa-client-automount
+@@ -92,7 +92,7 @@ def wait_for_sssd():
+     time.sleep(1)
+     while n < 10 and not found:
+         try:
+-            ipautil.run(["getent", "passwd", "admin@%s" % api.env.realm])
++            ipautil.run([paths.GETENT, "passwd", "admin@%s" % api.env.realm])
+             found = True
+         except Exception:
+             time.sleep(1)
+diff --git a/install/tools/ipa-adtrust-install b/install/tools/ipa-adtrust-install
+index a870d136e242affe6627cd4c44a173a80a9ab1c6..9dbfadb6fae193e2f4a54b3a0e226e0a6b1fd26f 100755
+--- a/install/tools/ipa-adtrust-install
++++ b/install/tools/ipa-adtrust-install
+@@ -110,7 +110,7 @@ def read_admin_password(admin_name):
+ 
+ def ensure_admin_kinit(admin_name, admin_password):
+     try:
+-        ipautil.run(['kinit', admin_name], stdin=admin_password+'\n')
++        ipautil.run([paths.KINIT, admin_name], stdin=admin_password+'\n')
+     except ipautil.CalledProcessError:
+         print("There was error to automatically re-kinit your admin user "
+               "ticket.")
+diff --git a/install/tools/ipa-ca-install b/install/tools/ipa-ca-install
+index dcdbe884f15b13b92ec68a11d9f00e3e28771b42..55182dc30e4736618f749e78db161fc7eefe37ac 100755
+--- a/install/tools/ipa-ca-install
++++ b/install/tools/ipa-ca-install
+@@ -352,7 +352,7 @@ def main():
+     api.Backend.ldap2.disconnect()
+ 
+     # execute ipactl to refresh services status
+-    ipautil.run(['ipactl', 'start', '--ignore-service-failures'],
++    ipautil.run([paths.IPACTL, 'start', '--ignore-service-failures'],
+                 raiseonerr=False)
+ 
+ 
+diff --git a/install/tools/ipa-dns-install b/install/tools/ipa-dns-install
+index 32a17d223ae2bdd9a1ded62defcc272a40d2627b..0e76a5ab93bd37c2f0c9c5ea4894023588697782 100755
+--- a/install/tools/ipa-dns-install
++++ b/install/tools/ipa-dns-install
+@@ -151,7 +151,7 @@ def main():
+     # Services are enabled in dns_installer.install()
+ 
+     # execute ipactl to refresh services status
+-    ipautil.run(['ipactl', 'start', '--ignore-service-failures'],
++    ipautil.run([paths.IPACTL, 'start', '--ignore-service-failures'],
+                 raiseonerr=False)
+ 
+     api.Backend.ldap2.disconnect()
+diff --git a/ipaclient/install/client.py b/ipaclient/install/client.py
+index 80b572ce9b5a250c0c32a1d7fcd06ec53af32984..babebfc667c5a096fb2e0238de444ffa3ce62b77 100644
+--- a/ipaclient/install/client.py
++++ b/ipaclient/install/client.py
+@@ -1125,7 +1125,7 @@ def configure_sshd_config(fstore, options):
+         )
+ 
+         for candidate in candidates:
+-            args = ['sshd', '-t', '-f', os.devnull]
++            args = [paths.SSHD, '-t', '-f', os.devnull]
+             for item in candidate.items():
+                 args.append('-o')
+                 args.append('%s=%s' % item)
+@@ -1157,7 +1157,7 @@ def configure_automount(options):
+     logger.info('\nConfiguring automount:')
+ 
+     args = [
+-        'ipa-client-automount', '--debug', '-U', '--location',
++        paths.IPA_CLIENT_AUTOMOUNT, '--debug', '-U', '--location',
+         options.location
+     ]
+ 
+@@ -2615,7 +2615,7 @@ def _install(options):
+                 subject_base = DN(subject_base)
+ 
+             if options.principal is not None:
+-                run(["kdestroy"], raiseonerr=False, env=env)
++                run([paths.KDESTROY], raiseonerr=False, env=env)
+ 
+             # Obtain the TGT. We do it with the temporary krb5.conf, so that
+             # only the KDC we're installing under is contacted.
+@@ -2954,7 +2954,7 @@ def _install(options):
+             # Particulary, SSSD might take longer than 6-8 seconds.
+             while n < 10 and not found:
+                 try:
+-                    ipautil.run(["getent", "passwd", user])
++                    ipautil.run([paths.GETENT, "passwd", user])
+                     found = True
+                 except Exception as e:
+                     time.sleep(1)
+@@ -3036,7 +3036,7 @@ def uninstall(options):
+     statestore = sysrestore.StateFile(paths.IPA_CLIENT_SYSRESTORE)
+ 
+     try:
+-        run(["ipa-client-automount", "--uninstall", "--debug"])
++        run([paths.IPA_CLIENT_AUTOMOUNT, "--uninstall", "--debug"])
+     except Exception as e:
+         logger.error(
+             "Unconfigured automount client failed: %s", str(e))
+diff --git a/ipaplatform/base/paths.py b/ipaplatform/base/paths.py
+index f1327daa11840bb9416cb0a12f2b5a1300b0374b..435d1b7de9083ee74e80da6fef5c3e3cdad654bb 100644
+--- a/ipaplatform/base/paths.py
++++ b/ipaplatform/base/paths.py
+@@ -25,6 +25,8 @@ This base platform module exports default filesystem paths.
+ class BasePathNamespace(object):
+     BASH = "/bin/bash"
+     BIN_HOSTNAMECTL = "/bin/hostnamectl"
++    ECHO = "/bin/echo"
++    GZIP = "/usr/bin/gzip"
+     LS = "/bin/ls"
+     SH = "/bin/sh"
+     SYSTEMCTL = "/bin/systemctl"
+@@ -160,8 +162,10 @@ class BasePathNamespace(object):
+     GPG = "/usr/bin/gpg"
+     GPG_AGENT = "/usr/bin/gpg-agent"
+     IPA_GETCERT = "/usr/bin/ipa-getcert"
++    KADMIN_LOCAL = '/usr/sbin/kadmin.local'
+     KDESTROY = "/usr/bin/kdestroy"
+     KINIT = "/usr/bin/kinit"
++    KLIST = "/usr/bin/klist"
+     BIN_KVNO = "/usr/bin/kvno"
+     LDAPMODIFY = "/usr/bin/ldapmodify"
+     LDAPPASSWD = "/usr/bin/ldappasswd"
+@@ -207,6 +211,7 @@ class BasePathNamespace(object):
+     GROUPADD = "/usr/sbin/groupadd"
+     USERMOD = "/usr/sbin/usermod"
+     HTTPD = "/usr/sbin/httpd"
++    IPA_CLIENT_AUTOMOUNT = "/usr/sbin/ipa-client-automount"
+     IPA_CLIENT_INSTALL = "/usr/sbin/ipa-client-install"
+     IPA_DNS_INSTALL = "/usr/sbin/ipa-dns-install"
+     SBIN_IPA_JOIN = "/usr/sbin/ipa-join"
+@@ -362,6 +367,9 @@ class BasePathNamespace(object):
+     IF_INET6 = '/proc/net/if_inet6'
+     AUTHCONFIG = None
+     IPA_SERVER_UPGRADE = '/usr/sbin/ipa-server-upgrade'
++    KEYCTL = '/usr/bin/keyctl'
++    GETENT = '/usr/bin/getent'
++    SSHD = '/usr/sbin/sshd'
+ 
+ 
+ paths = BasePathNamespace()
+diff --git a/ipapython/kernel_keyring.py b/ipapython/kernel_keyring.py
+index 4b7010e32e90a52fefb0ebbd4fec930ae82b7ea6..6ae1e74493810fa25093fe134447dd4ba0f5da74 100644
+--- a/ipapython/kernel_keyring.py
++++ b/ipapython/kernel_keyring.py
+@@ -23,6 +23,7 @@ import os
+ import six
+ 
+ from ipapython.ipautil import run
++from ipaplatform.paths import paths
+ 
+ # NOTE: Absolute path not required for keyctl since we reset the environment
+ #       in ipautil.run.
+@@ -35,34 +36,38 @@ from ipapython.ipautil import run
+ KEYRING = '@s'
+ KEYTYPE = 'user'
+ 
++
+ def dump_keys():
+     """
+     Dump all keys
+     """
+-    result = run(['keyctl', 'list', KEYRING], raiseonerr=False,
++    result = run([paths.KEYCTL, 'list', KEYRING], raiseonerr=False,
+                  capture_output=True)
+     return result.output
+ 
++
+ def get_real_key(key):
+     """
+     One cannot request a key based on the description it was created with
+     so find the one we're looking for.
+     """
+     assert isinstance(key, six.string_types)
+-    result = run(['keyctl', 'search', KEYRING, KEYTYPE, key],
++    result = run([paths.KEYCTL, 'search', KEYRING, KEYTYPE, key],
+                  raiseonerr=False, capture_output=True)
+     if result.returncode:
+         raise ValueError('key %s not found' % key)
+     return result.raw_output.rstrip()
+ 
++
+ def get_persistent_key(key):
+     assert isinstance(key, six.string_types)
+-    result = run(['keyctl', 'get_persistent', KEYRING, key],
++    result = run([paths.KEYCTL, 'get_persistent', KEYRING, key],
+                  raiseonerr=False, capture_output=True)
+     if result.returncode:
+         raise ValueError('persistent key %s not found' % key)
+     return result.raw_output.rstrip()
+ 
++
+ def is_persistent_keyring_supported():
+     uid = os.geteuid()
+     try:
+@@ -72,6 +77,7 @@ def is_persistent_keyring_supported():
+ 
+     return True
+ 
++
+ def has_key(key):
+     """
+     Returns True/False whether the key exists in the keyring.
+@@ -83,6 +89,7 @@ def has_key(key):
+     except ValueError:
+         return False
+ 
++
+ def read_key(key):
+     """
+     Read the keyring and return the value for key.
+@@ -91,13 +98,14 @@ def read_key(key):
+     """
+     assert isinstance(key, six.string_types)
+     real_key = get_real_key(key)
+-    result = run(['keyctl', 'pipe', real_key], raiseonerr=False,
++    result = run([paths.KEYCTL, 'pipe', real_key], raiseonerr=False,
+                  capture_output=True)
+     if result.returncode:
+         raise ValueError('keyctl pipe failed: %s' % result.error_log)
+ 
+     return result.raw_output
+ 
++
+ def update_key(key, value):
+     """
+     Update the keyring data. If they key doesn't exist it is created.
+@@ -106,13 +114,14 @@ def update_key(key, value):
+     assert isinstance(value, bytes)
+     if has_key(key):
+         real_key = get_real_key(key)
+-        result = run(['keyctl', 'pupdate', real_key], stdin=value,
++        result = run([paths.KEYCTL, 'pupdate', real_key], stdin=value,
+                      raiseonerr=False)
+         if result.returncode:
+             raise ValueError('keyctl pupdate failed: %s' % result.error_log)
+     else:
+         add_key(key, value)
+ 
++
+ def add_key(key, value):
+     """
+     Add a key to the kernel keyring.
+@@ -121,18 +130,19 @@ def add_key(key, value):
+     assert isinstance(value, bytes)
+     if has_key(key):
+         raise ValueError('key %s already exists' % key)
+-    result = run(['keyctl', 'padd', KEYTYPE, key, KEYRING],
++    result = run([paths.KEYCTL, 'padd', KEYTYPE, key, KEYRING],
+                  stdin=value, raiseonerr=False)
+     if result.returncode:
+         raise ValueError('keyctl padd failed: %s' % result.error_log)
+ 
++
+ def del_key(key):
+     """
+     Remove a key from the keyring
+     """
+     assert isinstance(key, six.string_types)
+     real_key = get_real_key(key)
+-    result = run(['keyctl', 'unlink', real_key, KEYRING],
++    result = run([paths.KEYCTL, 'unlink', real_key, KEYRING],
+                  raiseonerr=False)
+     if result.returncode:
+         raise ValueError('keyctl unlink failed: %s' % result.error_log)
+diff --git a/ipaserver/install/adtrustinstance.py b/ipaserver/install/adtrustinstance.py
+index 1f875c26fe909428ebf2e9c2acc9a8ad70de9a72..e787fccb9482809b180012ed8e7be2e5a6494f93 100644
+--- a/ipaserver/install/adtrustinstance.py
++++ b/ipaserver/install/adtrustinstance.py
+@@ -555,8 +555,10 @@ class ADTRUSTInstance(service.Service):
+     def clean_samba_keytab(self):
+         if os.path.exists(self.keytab):
+             try:
+-                ipautil.run(["ipa-rmkeytab", "--principal", self.principal,
+-                             "-k", self.keytab])
++                ipautil.run([
++                    paths.IPA_RMKEYTAB, "--principal", self.principal,
++                    "-k", self.keytab
++                ])
+             except ipautil.CalledProcessError as e:
+                 if e.returncode != 5:
+                     logger.critical("Failed to remove old key for %s",
+diff --git a/ipaserver/install/installutils.py b/ipaserver/install/installutils.py
+index 005fbeef37309ee3891e82ac0727adb031213da6..e110a5c3fc3e214736cb650f6da8a330eaa665a2 100644
+--- a/ipaserver/install/installutils.py
++++ b/ipaserver/install/installutils.py
+@@ -599,19 +599,26 @@ def get_directive(filename, directive, separator=' '):
+     fd.close()
+     return None
+ 
++
+ def kadmin(command):
+-    return ipautil.run(["kadmin.local", "-q", command,
+-                        "-x", "ipa-setup-override-restrictions"],
+-                       capture_output=True,
+-                       capture_error=True)
++    return ipautil.run(
++        [
++            paths.KADMIN_LOCAL, "-q", command,
++            "-x", "ipa-setup-override-restrictions"
++        ],
++        capture_output=True,
++        capture_error=True
++    )
+ 
+ 
+ def kadmin_addprinc(principal):
+     return kadmin("addprinc -randkey " + principal)
+ 
++
+ def kadmin_modprinc(principal, options):
+     return kadmin("modprinc " + options + " " + principal)
+ 
++
+ def create_keytab(path, principal):
+     try:
+         if os.path.isfile(path):
+@@ -832,7 +839,7 @@ def expand_replica_info(filename, password):
+     tarfile = top_dir+"/files.tar"
+     dir_path = top_dir + "/realm_info"
+     decrypt_file(filename, tarfile, password, top_dir)
+-    ipautil.run(["tar", "xf", tarfile, "-C", top_dir])
++    ipautil.run([paths.TAR, "xf", tarfile, "-C", top_dir])
+     os.remove(tarfile)
+ 
+     return top_dir, dir_path
+diff --git a/ipaserver/install/ipa_backup.py b/ipaserver/install/ipa_backup.py
+index cef01d30454ea1adb8bf9c68f428b9555f1b9557..db4b28c6deebd833855c32c5ff832dad3e5c741e 100644
+--- a/ipaserver/install/ipa_backup.py
++++ b/ipaserver/install/ipa_backup.py
+@@ -314,7 +314,7 @@ class Backup(admintool.AdminTool):
+                     dirsrv.stop(capture_output=False)
+             else:
+                 logger.info('Stopping IPA services')
+-                run(['ipactl', 'stop'])
++                run([paths.IPACTL, 'stop'])
+ 
+             instance = installutils.realm_to_serverid(api.env.realm)
+             if os.path.exists(paths.VAR_LIB_SLAPD_INSTANCE_DIR_TEMPLATE %
+@@ -336,7 +336,7 @@ class Backup(admintool.AdminTool):
+                     dirsrv.start(capture_output=False)
+             else:
+                 logger.info('Starting IPA service')
+-                run(['ipactl', 'start'])
++                run([paths.IPACTL, 'start'])
+ 
+             # Compress after services are restarted to minimize
+             # the unavailability window
+@@ -549,7 +549,7 @@ class Backup(admintool.AdminTool):
+         # Compress the archive. This is done separately, since 'tar' cannot
+         # append to a compressed archive.
+         if self.tarfile:
+-            result = run(['gzip', self.tarfile], raiseonerr=False)
++            result = run([paths.GZIP, self.tarfile], raiseonerr=False)
+             if result.returncode != 0:
+                 raise admintool.ScriptError(
+                     'gzip returned non-zero code %d '
+diff --git a/ipaserver/install/ipa_restore.py b/ipaserver/install/ipa_restore.py
+index c7e996bbe284a7eb2d03fbedb4798d3b15f3dcc0..4941831585f473c4937b23b3f59d8ff99a654b0e 100644
+--- a/ipaserver/install/ipa_restore.py
++++ b/ipaserver/install/ipa_restore.py
+@@ -386,7 +386,7 @@ class Restore(admintool.AdminTool):
+                     dirsrv.start(capture_output=False)
+             else:
+                 logger.info('Stopping IPA services')
+-                result = run(['ipactl', 'stop'], raiseonerr=False)
++                result = run([paths.IPACTL, 'stop'], raiseonerr=False)
+                 if result.returncode not in [0, 6]:
+                     logger.warning('Stopping IPA failed: %s', result.error_log)
+ 
+@@ -426,7 +426,7 @@ class Restore(admintool.AdminTool):
+                 gssproxy = services.service('gssproxy', api)
+                 gssproxy.reload_or_restart()
+                 logger.info('Starting IPA services')
+-                run(['ipactl', 'start'])
++                run([paths.IPACTL, 'start'])
+                 logger.info('Restarting SSSD')
+                 sssd = services.service('sssd', api)
+                 sssd.restart()
+diff --git a/ipaserver/install/krbinstance.py b/ipaserver/install/krbinstance.py
+index 319eeb82bcbe61acd70b2943982b6fec6fa33f92..139803ffbe26a6197535e66b63ba566c2a917e01 100644
+--- a/ipaserver/install/krbinstance.py
++++ b/ipaserver/install/krbinstance.py
+@@ -346,7 +346,7 @@ class KrbInstance(service.Service):
+         MIN_KRB5KDC_WITH_WORKERS = "1.9"
+         cpus = os.sysconf('SC_NPROCESSORS_ONLN')
+         workers = False
+-        result = ipautil.run(['klist', '-V'],
++        result = ipautil.run([paths.KLIST, '-V'],
+                              raiseonerr=False, capture_output=True)
+         if result.returncode == 0:
+             verstr = result.output.split()[-1]
+diff --git a/ipatests/pytest_ipa/integration/__init__.py b/ipatests/pytest_ipa/integration/__init__.py
+index fb9990a15b8e28dbe27f2b9275e4877e00f25755..7c1eb2232e2362b8f691329d9a022391a0e79d91 100644
+--- a/ipatests/pytest_ipa/integration/__init__.py
++++ b/ipatests/pytest_ipa/integration/__init__.py
+@@ -31,6 +31,7 @@ import pytest
+ from pytest_multihost import make_multihost_fixture
+ 
+ from ipapython import ipautil
++from ipaplatform.paths import paths
+ from ipatests.test_util import yield_fixture
+ from .config import Config
+ from .env_config import get_global_config
+@@ -150,7 +151,7 @@ def collect_logs(name, logs_dict, logfile_dir=None, beakerlib_plugin=None):
+             # delete from remote
+             host.run_command(['rm', '-f', tmpname])
+             # Unpack on the local side
+-            ipautil.run(['tar', 'xJvf', 'logs.tar.xz'], cwd=dirname,
++            ipautil.run([paths.TAR, 'xJvf', 'logs.tar.xz'], cwd=dirname,
+                         raiseonerr=False)
+             os.unlink(tarname)
+ 
+diff --git a/ipatests/test_integration/test_caless.py b/ipatests/test_integration/test_caless.py
+index f93bdc976e03e23536c4cb2dc7401d44ddddcea1..ff8d95caa6fed00d3876f1d08e2170a9587a6d86 100644
+--- a/ipatests/test_integration/test_caless.py
++++ b/ipatests/test_integration/test_caless.py
+@@ -336,7 +336,7 @@ class CALessBase(IntegrationTest):
+                 with open(cert_fname) as cert:
+                     chain.write(cert.read())
+ 
+-        ipautil.run(["openssl", "pkcs12", "-export", "-out", filename,
++        ipautil.run([paths.OPENSSL, "pkcs12", "-export", "-out", filename,
+                      "-inkey", key_fname, "-in", certchain_fname, "-passin",
+                      "pass:" + cls.cert_password, "-passout", "pass:" +
+                      password, "-name", nickname], cwd=cls.cert_dir)
+diff --git a/ipatests/test_ipapython/test_ipautil.py b/ipatests/test_ipapython/test_ipautil.py
+index e15b4f948e8c6f927ee5594780609dace0345d28..88b591e5cb173799c2d5dffddadcfe65958b7c6b 100644
+--- a/ipatests/test_ipapython/test_ipautil.py
++++ b/ipatests/test_ipapython/test_ipautil.py
+@@ -30,6 +30,7 @@ import pytest
+ import six
+ import tempfile
+ 
++from ipaplatform.paths import paths
+ from ipalib.constants import IPAAPI_USER
+ from ipapython import ipautil
+ 
+@@ -419,7 +420,7 @@ class TestTimeParser(object):
+ 
+ 
+ def test_run():
+-    result = ipautil.run(['echo', 'foo\x02bar'],
++    result = ipautil.run([paths.ECHO, 'foo\x02bar'],
+                          capture_output=True,
+                          capture_error=True)
+     assert result.returncode == 0
+@@ -430,7 +431,7 @@ def test_run():
+ 
+ 
+ def test_run_no_capture_output():
+-    result = ipautil.run(['echo', 'foo\x02bar'])
++    result = ipautil.run([paths.ECHO, 'foo\x02bar'])
+     assert result.returncode == 0
+     assert result.output is None
+     assert result.raw_output == b'foo\x02bar\n'
+@@ -439,13 +440,13 @@ def test_run_no_capture_output():
+ 
+ 
+ def test_run_bytes():
+-    result = ipautil.run(['echo', b'\x01\x02'], capture_output=True)
++    result = ipautil.run([paths.ECHO, b'\x01\x02'], capture_output=True)
+     assert result.returncode == 0
+     assert result.raw_output == b'\x01\x02\n'
+ 
+ 
+ def test_run_decode():
+-    result = ipautil.run(['echo', u'á'.encode('utf-8')],
++    result = ipautil.run([paths.ECHO, u'á'.encode('utf-8')],
+                          encoding='utf-8', capture_output=True)
+     assert result.returncode == 0
+     if six.PY3:
+@@ -457,11 +458,11 @@ def test_run_decode():
+ def test_run_decode_bad():
+     if six.PY3:
+         with pytest.raises(UnicodeDecodeError):
+-            ipautil.run(['echo', b'\xa0\xa1'],
++            ipautil.run([paths.ECHO, b'\xa0\xa1'],
+                         capture_output=True,
+                         encoding='utf-8')
+     else:
+-        result = ipautil.run(['echo', '\xa0\xa1'],
++        result = ipautil.run([paths.ECHO, '\xa0\xa1'],
+                              capture_output=True,
+                              encoding='utf-8')
+         assert result.returncode == 0
+@@ -469,7 +470,7 @@ def test_run_decode_bad():
+ 
+ 
+ def test_backcompat():
+-    result = out, err, rc = ipautil.run(['echo', 'foo\x02bar'],
++    result = out, err, rc = ipautil.run([paths.ECHO, 'foo\x02bar'],
+                                         capture_output=True,
+                                         capture_error=True)
+     assert rc is result.returncode
+diff --git a/ipatests/test_xmlrpc/test_caacl_profile_enforcement.py b/ipatests/test_xmlrpc/test_caacl_profile_enforcement.py
+index 931f7aff344859ee62e8e195a5fa76a1b4807eb1..6ed6cbf34c62bb83b6ebaf84cc3b105d6f76aea6 100644
+--- a/ipatests/test_xmlrpc/test_caacl_profile_enforcement.py
++++ b/ipatests/test_xmlrpc/test_caacl_profile_enforcement.py
+@@ -18,6 +18,7 @@ from cryptography.hazmat.primitives import hashes, serialization
+ from cryptography.hazmat.primitives.asymmetric import rsa
+ 
+ from ipalib import api, errors
++from ipaplatform.paths import paths
+ from ipatests.util import (
+     prepare_config, unlock_principal_password, change_principal,
+     host_keytab)
+@@ -50,7 +51,7 @@ def generate_user_csr(username, domain=None):
+         username=username)
+ 
+     with tempfile.NamedTemporaryFile(mode='w') as csr_file:
+-        run(['openssl', 'req', '-new', '-key', CERT_RSA_PRIVATE_KEY_PATH,
++        run([paths.OPENSSL, 'req', '-new', '-key', CERT_RSA_PRIVATE_KEY_PATH,
+              '-out', csr_file.name,
+              '-config', prepare_config(
+                  CERT_OPENSSL_CONFIG_TEMPLATE, csr_values)])
+diff --git a/ipatests/test_xmlrpc/test_cert_plugin.py b/ipatests/test_xmlrpc/test_cert_plugin.py
+index 9001e7f0989764a904275d11c5d96afc53322054..16f2058b1a9a38ec76479a184a23214275f5f551 100644
+--- a/ipatests/test_xmlrpc/test_cert_plugin.py
++++ b/ipatests/test_xmlrpc/test_cert_plugin.py
+@@ -176,7 +176,7 @@ class test_cert(BaseCert):
+         result = api.Command.cert_show(sn, out=unicode(self.certfile))
+         with open(self.certfile, "rb") as f:
+             pem_cert = f.read().decode('ascii')
+-        result = run(['openssl', 'x509', '-text'],
++        result = run([paths.OPENSSL, 'x509', '-text'],
+                      stdin=pem_cert, capture_output=True)
+         assert _EXP_CRL_URI in result.output
+         assert _EXP_OCSP_URI in result.output
+-- 
+2.20.1
+

@@ -1,0 +1,120 @@
+From 9650b233bdbda82bcbb447a3fc94523655cabc39 Mon Sep 17 00:00:00 2001
+From: Alexander Bokovoy <abokovoy@redhat.com>
+Date: Fri, 21 Sep 2018 10:57:23 +0300
+Subject: [PATCH] Support Samba 4.9
+
+Samba 4.9 became a bit more strict about creating a local NT token and a
+failure to resolve or create BUILTIN\Guests group will cause a rejection
+of the connection for a successfully authenticated one.
+
+Add a default mapping of the nobody group to BUILTIN\Guests.
+
+BUILTIN\Guests is a special group SID that is added to the NT token for
+authenticated users.
+
+For real guests there is 'guest account' option in smb.conf which
+defaults to 'nobody' user.
+
+This was implicit behavior before as 'guest account = nobody' by
+default would pick up 'nobody' group as well.
+
+Fixes: https://pagure.io/freeipa/issue/7705
+Reviewed-By: Rob Crittenden <rcritten@redhat.com>
+(cherry picked from commit 703497532abe4189835d0a02b32f9919c889bc1c)
+
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+---
+ .../updates/90-post_upgrade_plugins.update    |  1 +
+ ipaserver/install/adtrustinstance.py          | 14 +++++++++++++
+ ipaserver/install/plugins/adtrust.py          | 20 ++++++++++++++++++-
+ 3 files changed, 34 insertions(+), 1 deletion(-)
+
+diff --git a/install/updates/90-post_upgrade_plugins.update b/install/updates/90-post_upgrade_plugins.update
+index bbc3e29422fc0f139c2ca68a7033863e4c25f8cf..4e9378d9b567842e1cc9a8eeae819a931810895d 100644
+--- a/install/updates/90-post_upgrade_plugins.update
++++ b/install/updates/90-post_upgrade_plugins.update
+@@ -19,6 +19,7 @@ plugin: update_fix_duplicate_cacrt_in_ldap
+ plugin: update_upload_cacrt
+ # update_ra_cert_store has to be executed after update_ca_renewal_master
+ plugin: update_ra_cert_store
++plugin: update_mapping_Guests_to_nobody
+ 
+ # last
+ # DNS version 1
+diff --git a/ipaserver/install/adtrustinstance.py b/ipaserver/install/adtrustinstance.py
+index e787fccb9482809b180012ed8e7be2e5a6494f93..d6b8f5cfa66c0cfbc6d47906703fc09c3e961a53 100644
+--- a/ipaserver/install/adtrustinstance.py
++++ b/ipaserver/install/adtrustinstance.py
+@@ -120,6 +120,15 @@ def make_netbios_name(s):
+     return ''.join([c for c in s.split('.')[0].upper() \
+                     if c in ALLOWED_NETBIOS_CHARS])[:15]
+ 
++
++def map_Guests_to_nobody():
++    env = {'LC_ALL': 'C'}
++    args = [paths.NET, 'groupmap', 'add', 'sid=S-1-5-32-546',
++            'unixgroup=nobody', 'type=builtin']
++
++    logger.debug("Map BUILTIN\\Guests to a group 'nobody'")
++    ipautil.run(args, env=env, raiseonerr=False, capture_error=True)
++
+ class ADTRUSTInstance(service.Service):
+ 
+     ATTR_SID = "ipaNTSecurityIdentifier"
+@@ -532,6 +541,9 @@ class ADTRUSTInstance(service.Service):
+             tmp_conf.flush()
+             ipautil.run([paths.NET, "conf", "import", tmp_conf.name])
+ 
++    def __map_Guests_to_nobody(self):
++        map_Guests_to_nobody()
++
+     def __setup_group_membership(self):
+         # Add the CIFS and host principals to the 'adtrust agents' group
+         # as 389-ds only operates with GroupOfNames, we have to use
+@@ -833,6 +845,8 @@ class ADTRUSTInstance(service.Service):
+                   self.__create_samba_domain_object)
+         self.step("creating samba config registry", self.__write_smb_registry)
+         self.step("writing samba config file", self.__write_smb_conf)
++        self.step("map BUILTIN\\Guests to nobody group",
++                  self.__map_Guests_to_nobody)
+         self.step("adding cifs Kerberos principal",
+                   self.request_service_keytab)
+         self.step("adding cifs and host Kerberos principals to the adtrust agents group", \
+diff --git a/ipaserver/install/plugins/adtrust.py b/ipaserver/install/plugins/adtrust.py
+index bec5a09c1c129b1129f31e3df59a2fa87aac0691..1f50bef891770c53a9086c7aa36d0ee1f088fbe6 100644
+--- a/ipaserver/install/plugins/adtrust.py
++++ b/ipaserver/install/plugins/adtrust.py
+@@ -23,7 +23,8 @@ from ipalib import Registry, errors
+ from ipalib import Updater
+ from ipapython.dn import DN
+ from ipaserver.install import sysupgrade
+-from ipaserver.install.adtrustinstance import ADTRUSTInstance
++from ipaserver.install.adtrustinstance import (
++    ADTRUSTInstance, map_Guests_to_nobody)
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -382,3 +383,20 @@ class update_tdo_gidnumber(Updater):
+             return False, ()
+ 
+         return False, ()
++
++
++@register()
++class update_mapping_Guests_to_nobody(Updater):
++    """
++    Map BUILTIN\\Guests group to nobody
++
++    Samba 4.9 became more strict on availability of builtin Guests group
++    """
++    def execute(self, **options):
++        # First, see if trusts are enabled on the server
++        if not self.api.Command.adtrust_is_enabled()['result']:
++            logger.debug('AD Trusts are not enabled on this server')
++            return False, []
++
++        map_Guests_to_nobody()
++        return False, []
+-- 
+2.20.1
+

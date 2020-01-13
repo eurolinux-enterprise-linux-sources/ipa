@@ -1,0 +1,57 @@
+From 8cdf6a3dd64d36f40a9107dad2ab2d9a470f58b5 Mon Sep 17 00:00:00 2001
+From: amitkuma <amitkuma@redhat.com>
+Date: Tue, 16 Jan 2018 17:34:08 +0530
+Subject: [PATCH] RFE: ipa client should setup openldap for GSSAPI
+
+The IPA client installer currently edits /etc/openldap/ldap.conf, setting up
+the client to consume LDAP data from IPA.  It currently sets:
+URI
+BASE
+TLS_CACERT
+
+This PR makes ipa-client to add this AV pair:
+SASL_MECH GSSAPI
+
+Resolves: https://pagure.io/freeipa/issue/7366
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+Reviewed-By: Florence Blanc-Renaud <frenaud@redhat.com>
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+---
+ ipaclient/install/client.py | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/ipaclient/install/client.py b/ipaclient/install/client.py
+index babebfc667c5a096fb2e0238de444ffa3ce62b77..ca404ab80fd1586e7098950545a343fa6812ca39 100644
+--- a/ipaclient/install/client.py
++++ b/ipaclient/install/client.py
+@@ -523,8 +523,12 @@ def configure_openldap_conf(fstore, cli_basedn, cli_server):
+         {
+             'name': 'comment',
+             'type': 'comment',
+-            'value': '   URI, BASE and TLS_CACERT have been added if they '
+-                     'were not set.'
++            'value': '   URI, BASE, TLS_CACERT and SASL_MECH'
++        },
++        {
++            'name': 'comment',
++            'type': 'comment',
++            'value': '   have been added if they were not set.'
+         },
+         {
+             'name': 'comment',
+@@ -575,6 +579,12 @@ def configure_openldap_conf(fstore, cli_basedn, cli_server):
+             'type': 'option',
+             'value': paths.IPA_CA_CRT
+         },
++        {
++            'action': 'addifnotset',
++            'name': 'SASL_MECH',
++            'type': 'option',
++            'value': 'GSSAPI'
++        },
+     ]
+ 
+     target_fname = paths.OPENLDAP_LDAP_CONF
+-- 
+2.20.1
+

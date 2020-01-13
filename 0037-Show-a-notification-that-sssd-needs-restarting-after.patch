@@ -1,0 +1,117 @@
+From 3c2237e481fdb2241494bd285931803335ed44dd Mon Sep 17 00:00:00 2001
+From: Oleg Kozlov <xxblx@posteo.org>
+Date: Fri, 29 Mar 2019 14:35:02 +0100
+Subject: [PATCH] Show a notification that sssd needs restarting after
+ idrange-mod
+
+If the `ipa idrange-mod` command has been used show a notification that sssd.service needs restarting. It's needed for applying changes. E.g. after setup AD trust with a domain with more than 200000 objects (the highest RID > idm's default value, 200000) users with RIDs > 200000 are not able to login, the size needs to be increased via idrange-mod, but it makes an effect only after sssd restarting.
+
+Implementation:
+Notification was implemented via passing `ipalib.messages.ServiceRestartRequired` to `add_message` method in `ipaserver.plugins.idrange.idrange_mod.post_callback`.
+
+Tests:
+Added `messages` with sssd restart required (`ipalib.messages.ServiceRestartRequired`) to cases with idrange_mod where output is expected in `ipatests.test_xmlrpc.test_range_plugin.test_range'.
+
+Fixes: https://pagure.io/freeipa/issue/7708
+Reviewed-By: Alexander Bokovoy <abokovoy@redhat.com>
+Reviewed-By: Christian Heimes <cheimes@redhat.com>
+---
+ ipaplatform/base/services.py              |  3 ++-
+ ipaserver/plugins/idrange.py              | 11 ++++++++++-
+ ipatests/test_xmlrpc/test_range_plugin.py | 17 ++++++++++++++++-
+ 3 files changed, 28 insertions(+), 3 deletions(-)
+
+diff --git a/ipaplatform/base/services.py b/ipaplatform/base/services.py
+index 9fd2a8532837c631945fa837be03c80fa42128bf..b037718f22fc36c4a01b3b0962b3f9e7a69f4b7e 100644
+--- a/ipaplatform/base/services.py
++++ b/ipaplatform/base/services.py
+@@ -53,7 +53,8 @@ wellknownservices = ['certmonger', 'dirsrv', 'httpd', 'ipa', 'krb5kdc',
+                      'messagebus', 'nslcd', 'nscd', 'ntpd', 'portmap',
+                      'rpcbind', 'kadmin', 'sshd', 'autofs', 'rpcgssd',
+                      'rpcidmapd', 'pki_tomcatd', 'chronyd', 'domainname',
+-                     'named', 'ods_enforcerd', 'ods_signerd', 'gssproxy']
++                     'named', 'ods_enforcerd', 'ods_signerd', 'gssproxy',
++                     'sssd']
+ 
+ # The common ports for these services. This is used to wait for the
+ # service to become available.
+diff --git a/ipaserver/plugins/idrange.py b/ipaserver/plugins/idrange.py
+index ea3d1ff5662800957cde99934e9d2577e6b13ea6..364f128de4a04f484bde0def3c782e1a48be1daa 100644
+--- a/ipaserver/plugins/idrange.py
++++ b/ipaserver/plugins/idrange.py
+@@ -17,13 +17,16 @@
+ # You should have received a copy of the GNU General Public License
+ # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ 
++from __future__ import absolute_import
++
+ import six
+ 
+ from ipalib.plugable import Registry
+ from .baseldap import (LDAPObject, LDAPCreate, LDAPDelete,
+                                      LDAPRetrieve, LDAPSearch, LDAPUpdate)
+-from ipalib import api, Int, Str, StrEnum, _, ngettext
++from ipalib import api, Int, Str, StrEnum, _, ngettext, messages
+ from ipalib import errors
++from ipaplatform import services
+ from ipapython.dn import DN
+ 
+ if six.PY3:
+@@ -768,4 +771,10 @@ class idrange_mod(LDAPUpdate):
+         assert isinstance(dn, DN)
+         self.obj.handle_ipabaserid(entry_attrs, options)
+         self.obj.handle_iparangetype(entry_attrs, options)
++        self.add_message(
++            messages.ServiceRestartRequired(
++                service=services.knownservices['sssd'].systemd_name,
++                server=keys[0]
++            )
++        )
+         return dn
+diff --git a/ipatests/test_xmlrpc/test_range_plugin.py b/ipatests/test_xmlrpc/test_range_plugin.py
+index 0a8f66b62dac9ea2e4692f0f64b1c8fbc9272fd2..2adc57ed5f5d23fe5f457ab3a5e23462f24a62fe 100644
+--- a/ipatests/test_xmlrpc/test_range_plugin.py
++++ b/ipatests/test_xmlrpc/test_range_plugin.py
+@@ -21,9 +21,12 @@
+ Test the `ipaserver/plugins/idrange.py` module, and XML-RPC in general.
+ """
+ 
++from __future__ import absolute_import
++
+ import six
+ 
+-from ipalib import api, errors
++from ipalib import api, errors, messages
++from ipaplatform import services
+ from ipatests.test_xmlrpc.xmlrpc_test import Declarative, fuzzy_uuid
+ from ipatests.test_xmlrpc import objectclasses
+ from ipatests.util import MockLDAP
+@@ -786,6 +789,12 @@ class test_range(Declarative):
+             command=('idrange_mod', [domain3range2],
+                      dict(ipabaseid=domain3range1_base_id)),
+             expected=dict(
++                messages=(
++                    messages.ServiceRestartRequired(
++                        service=services.knownservices['sssd'].systemd_name,
++                        server=domain3range2
++                    ).to_dict(),
++                ),
+                 result=dict(
+                     cn=[domain3range2],
+                     ipabaseid=[unicode(domain3range1_base_id)],
+@@ -851,6 +860,12 @@ class test_range(Declarative):
+             command=('idrange_mod', [domain2range1],
+                      dict(ipabaserid=domain5range1_base_rid)),
+             expected=dict(
++                messages=(
++                    messages.ServiceRestartRequired(
++                        service=services.knownservices['sssd'].systemd_name,
++                        server=domain2range1
++                    ).to_dict(),
++                ),
+                 result=dict(
+                     cn=[domain2range1],
+                     ipabaseid=[unicode(domain2range1_base_id)],
+-- 
+2.20.1
+
